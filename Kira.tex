@@ -689,7 +689,7 @@ Across all scales, Kira SE achieves near linear speedup.
 \begin{figure}[h]
 	\begin{center}
 		\includegraphics[width=85mm]{pictures/scaleout}
-		\caption{Scale-Out Performance Comparison between Kira SE and the C Version in Logarithmic Scale (Lower is Bßetter)
+		\caption{Scale-Out Performance Comparison between Kira SE and the C Version in Logarithmic Scale (Lower is Better)
 		\label{fig:scaleout}}
 		\up
   	\end{center}
@@ -867,8 +867,8 @@ the original code base. Workflow systems provide a flexible data management and 
 scheme that can be applied to a broad range of applications, but at the cost of programming
 flexibility.
 
-Researchers have used the Hadoop MapReduce~\cite{HADOOP} system to paralleize
-tasks using a map-reduce data model. A variety of applications have been paralleized
+Researchers have used the Hadoop MapReduce~\cite{HADOOP} system to parallelize
+tasks using a map-reduce data model. A variety of applications have been parallelized
 using Hadoop such as CloudBLAST~\cite{matsunaga08}. 
  Although Hadoop exposes many convenient
 abstractions, it is difficult to target the restrictive map-reduce API~\cite{dewitt08}
@@ -934,7 +934,7 @@ $3.7\times$ faster than C over GlusterFS when running on a cluster of 64 m2.4xla
 EC2 instances. Kira SE also has comparable performance (between 18.5\% slower and 75.1\% faster)
 to that of the C version running on the NERSC Edison supercomputer. From the performance
 measurements and comparison, we believe that the Big Data ecosystem outperforms the HPC
-ecosystem when running embarassingly parallel data intensive scientific applications. This is
+ecosystem when running embarrassingly parallel data intensive scientific applications. This is
 because ``Big Data'' systems like Apache Spark~\cite{zaharia12} and Hadoop~\cite{HADOOP}
 focus on providing high I/O and data locality during job execution.
 
