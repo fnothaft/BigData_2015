@@ -57,8 +57,8 @@
 \lstset{language=java, numbers=left, numberstyle=\tiny\color{black}, numbersep=3pt, escapeinside={\$}, basicstyle=\footnotesize\ttfamily, escapeinside={\%*}{*)}}
 
 \newif\ifdraft
-\drafttrue
-%\draftfalse                                                                              
+%\drafttrue
+\draftfalse                                                                              
 \ifdraft
 \newcommand{\zhaonote}[1]{{\textcolor{cyan}    { ***Zhao:      #1 }}}
 \newcommand{\note}[1]{ {\textcolor{red}    {\bf #1 }}}
@@ -69,6 +69,7 @@
 \newcommand{\note}[1]{}
 \fi
 
+\newcommand{\up}{\vspace*{-1em}}
 
 \begin{document}
 %
@@ -180,18 +181,6 @@ dataset with 512 cores on the Amazon EC2 cloud.
 Leveraging software originally designed for cloud-based infrastructure, Kira SE is still up to 1.8$\times$ faster than the C implementation
 running on the NERSC Edison supercomputer.
 
-%However, the workflow approach seeks to preserve the original program thus limits the programming flexibility. 
-%The Hadoop approach mandates the data flow of the application, and may introduce unnecessary I/O. 
-%While the MPI approach has to introduce application specific data management scheme to make better use of the I/O system.
-
-%Briefly talk about existing approaches to enable many task applications
-%The tradeoffs here are performance, flexibility, optimization generality:
-%\begin{itemize}
-%\item[] 1. Workflow -- process level parallelism, mid performance, worst flexibility, best generality
-%\item[] 2. Integrate as a single MPI program -- thread level parallelism, best performance, best flexibility, worst generality
-%\item[] 3. Kira, integrates at library level -- worst performance, best flexibility, best generality
-%\end{itemize}
-%Talk about real performance. 
 
 \end{abstract}
 
@@ -203,38 +192,15 @@ running on the NERSC Edison supercomputer.
 %\keywords{ACM proceedings, \LaTeX, text tagging}
 
 \section{Introduction}
-Many scientific discoveries are 
-%driven by 
-made through the collection and analysis of large datasets.
+Many scientific discoveries are made through the collection and analysis of large datasets.
 Dramatic increases in dataset sizes have made data processing a major bottleneck for scientific research in many disciplines, such as astronomy, genomics, the social sciences, and neuroscience.
-Research groups frequently start with a C or Fortran program that is optimized for processing a small amount of data on a single-node workstation and then use distributed processing frameworks to improve processing capacity.
+Research groups frequently start with a C or Fortran program that is optimized for processing a small amount of data on a single-node workstation and then use distributed processing frameworks to improve processing capacity~\cite{jacob09, altschul90}.
 These applications are known as many-task applications~\cite{raicu08} because they comprise many small single-process tasks that are connected by dataflow patterns.
 
-When building large many-task scientific applications, \linebreak there is a challenging tradeoff between programmability, performance, and fault-tolerance. 
-Scientists have used dedicated workflow systems (Galaxy~\cite{goecks10}, HTCondor~\cite{litzkow88}, and Swift~\cite{wilde11}) or parallel frameworks like the message passing interface (MPI, \cite{gropp96}) to build these applications.
-However, workflow systems sacrifice programming flexibility by running a single-process program as a monolithic entity.
-While MPI-based approaches enable fast execution and good scalability, MPI does not support fault tolerance, which makes applications fragile. Additionally, MPI-based solutions must employ an application specific data management scheme.
-With the rise of the Hadoop~\cite{HADOOP} ecosystem, recent work~\cite{ekanayake08, ekanayake10} has evaluated whether Hadoop can support many-task applications.
-Although Hadoop's map-reduce programming model can be used to express many-task applications, since Hadoop MapReduce only supports an all-to-all shuffle, it is cumbersome
-to support a wide variety of dataflow patterns in Hadoop MapReduce. Additionally, Hadoop MapReduce's dependence on shuffling data to disk makes it a bad fit for iterative and pipelined tasks~\cite{ekanayake10}.
+Scientists have used dedicated workflow systems (e.g. HTCondor~\cite{litzkow88}), parallel frameworks (e.g. Message Passing Interface~\cite{gropp96}), and  the data processing system Hadoop~\cite{HADOOP}  to build these applications. Each of these approaches has its own advantages such as provenance tracking, high scalability, and automated parallelism. However, these approaches also have shortcomings such as limited programming flexibility, lack of fault-tolerance and strict dataflow patterns.
 
 
-%Traditionally, dedicated workflow systems and Message Passing Interface~(MPI) libraries have been used to construct these many-task applications.
-%With the rise of the Hadoop~\cite{HADOOP} ecosystem, recent work~\cite{ekanayake08, ekanayake10}
-%\franknote{I've got a few other works to cite here} has evaluated Hadoop's ability to support multi-task scientific workflows.
-%\zhaonote{Can we put them in the related work section?}
-
-%Workflow systems, such as HTCondor~\cite{litzkow88}, Galaxy~\cite{goecks10}, and Swift~\cite{wilde11} can run single-process programs across a parallel environment.
-%These systems explicitly connect stages into a dataflow. However, parallelizing at the application level reduces the flexibility of the original program. For example, although the SExtractor application~\cite{bertin96} is written as a monolithic C program to extract astronomical objects from images, the application's logic allows background estimation, background removal, object detection, and astrometric and photometric estimation to be separated into distinct stages. The instrumentation of astrometric and photometric parameters are specified in configuration files which are not trivial for users to understand.
-%\franknote{Not sure what the purpose of this sentence is? I don't think we tackle the ``application configuration'' problem in this paper.}
-%\zhaonote{Yes, we should remove this sentence. Please go ahead.}
-%The SExtractor application can also be used to remove previously detected objects from an original image. This process can be performed iteratively to improve the final object extraction. Although the C program provides all the required semantics for building this iterative process, it does not expose the interfaces through the command line. This prevents workflow system based approaches from exposing these interfaces to users.
-%\franknote{Is the implication here that this prevents people from running the object extraction stages iteratively in a workflow system?}
-%\zhaonote{yes, that's what exactly I mean.}
-
-%MPI~\cite{gropp96} is another tool used to implement parallel task execution on supercomputers. mpiBLAST~\cite{lin08} is an example application built using MPI as the communication protocol for connecting the execution of single process programs (BLAST~\cite{altschul90}). mpiBLAST's customized data management scheme enables fast execution with good scalability. However, the dataflow implemented in an MPI approach is application specific and can not be reused for other applications.
-
-Apache Spark~\cite{zaharia12, zaharia10} emerged as a dataflow-based distributed computing system
+Apache Spark~\cite{zaharia12} emerged as a dataflow-based distributed computing system
 to answer demands for a tool that could run fast iterative data analyses on very large datasets.
 Spark parallelizes work using a directed, acyclic graph~(DAG) based model,
 provides resilience against transient failures by tracking computational lineage
@@ -255,8 +221,9 @@ and alltoall (shuffle).
 We show that this dataflow pattern coverage is sufficient for many-task applications. 
 We assert that Spark's optimization for data locality allows Kira SE to outperform the equivalent C implementation 
 running over shared file systems, even while paying the costs of providing full fault tolerance. 
-One extra advantage of Spark is that it is actively maintained by a large group of open source developers and 
-is unlikely to be impacted by the ebbs and flows of academic funding.
+\zhaonote{I remove the the funding issue of academic project, since it is not technical.}
+%One extra advantage of Spark is that it is actively maintained by a large group of open source developers and 
+%is unlikely to be impacted by the ebbs and flows of academic funding.
 
 %We provide a comprehensive study of the commodity open-source Apache Spark system's capability of supporting many-task applications
 %and demonstrate that Apache Spark system provides primitives that are sufficient for implementing
@@ -273,11 +240,11 @@ is unlikely to be impacted by the ebbs and flows of academic funding.
 
 Kira integrates with existing astronomy software at a library level by exposing a programming interface to users.
 This allows astronomers to build new analysis pipelines by linking in pre-existing software libraries.
-Kira can process data stored on the Hadoop Distributed File System~(HDFS, \cite{shvachko10}) and shared file systems such as GlusterFS~\cite{davies13}, Lustre~\cite{donovan03}, and GPFS~\cite{schmuck02}.
+Kira can process data stored on the Hadoop Distributed File System~(HDFS, \cite{shvachko10}) and shared file systems such as GlusterFS~\cite{davies13}, Lustre~\cite{donovan03}, and many others.
 Kira calls out to C libraries for computation and uses Spark's control flow and dataflow primitives to connect tasks.
 We demonstrate the Kira source extractor application~(Kira SE) and evaluate its performance against the equivalent C implementation on the Amazon EC2 cloud.
 Our experiments show that Apache Spark can efficiently manage $O(10^6)$ tasks, and that
-Kira SE runs 3.7x faster than running the C program in parallel in the EC2 cloud on the 1TB Data Release 7 from the Sloan Digital Sky Survey~\cite{abazajian09, york00}.
+Kira SE runs 3.7x faster than running the C program in parallel in the EC2 cloud on the 1TB Data Release 7 from the Sloan Digital Sky Survey~\cite{york00}.
 Kira is open source software released under an MIT license and is available from \linebreak \url{https://github.com/BIDS/Kira}.
 
 
@@ -294,7 +261,7 @@ This section reviews the science behind the sky surveys, introduces the source e
 Modern astronomical research is increasingly based around large-scale sky surveys.
 Rather than selecting specific targets of study, such a survey will uniformly observe large
 swaths of the sky. These surveys include the Sloan Digital Sky Survey (SDSS)~\cite{york00},
-the Panoramic Survey Telescope \& Rapid Response System (PanSTARRS)~\cite{kaiser02},
+%the Panoramic Survey Telescope \& Rapid Response System (PanSTARRS)~\cite{kaiser02},
 the Dark Energy Survey (DES)~\cite{dark05}, and the Large Synoptic Survey Telescope~(LSST,
 \cite{ivezic08}). Enabled by new telescopes and cameras with wide fields of view, these
 surveys deliver huge datasets that can be used for many different scientific studies
@@ -326,8 +293,8 @@ it does not expose the interfaces through the command line. In turn, this preven
 workflow system based approaches from exposing these interfaces to users. To resolve this,
 SEP~\cite{barbary2015} reorganizes the code base of SExtractor to expose core
 functionalities via a library. SEP provides both C and Python interfaces. Users can then
-build new applications based on SExtractor's primitives. Kira integrates with the SEP
-library and benefits from SEP's reorganization of SExtractor.
+build new applications based on SEP's primitives. Kira implements the source extraction
+functionality by integrating with SEP.
 
 \subsection{Engineering Requirements}
 \label{sec:Background-EngReq}
@@ -338,25 +305,25 @@ observations with more sensitive instrumentation before the peak of the supernov
 High throughput is also needed in large scale
 sky survey pipelines that perform real time data analysis, e.g. LSST~\cite{ivezic08}.
 The LSST uses a 2.4m-wide optical telescope that captures 3.2 billion pixels per
-image~\cite{LSST-link}. This telescope produces approximately 12.8~GB data in 39~seconds
+image. This telescope produces approximately 12.8~GB data in 39~seconds
 for a sustained rate of $\sim$330~MB per second. A typical night produces 13~TB of data. In
 total, the survey will produce 60~PB of raw data, which will be consolidated into a 15~PB catalog.
 
 \subsection{Spark}
-
 Apache Spark is a dataflow-based execution system that provides a functional, collection
-oriented API~\cite{zaharia12, zaharia10}. \linebreak Spark's development was motivated by a need for a
+oriented API~\cite{zaharia12}. \linebreak Spark's development was motivated by a need for a
 system that could rapidly execute iterative workloads on very large datasets. Spark has
 become widely adopted in industry, and several academic research groups have used Spark
 for the analysis of scientific datasets in neuroscience~\cite{freeman14} and genomics~\cite{nothaft15}.
 
-Spark provides Scala, Java, and Python programming interfaces, within a functional
-programming paradigm. Spark usually uses HDFS~\cite{HDFS} for persistent storage, but
-Spark can process data stored in S3 or a shared file system such as
-GlusterFS~\cite{davies13} or Lustre~\cite{donovan03}. Spark tracks job lineage, which is used for scheduling the
-recomputation of data when a node fails. Spark has been extended to support a variety of
-application specific workloads through the GraphX~\cite{gonzalez14} library for graph
-processing, the MLlib~\cite{sparks13} library for machine learning, and SparkSQL~\cite{armbrust15} for relational processing.
+Spark provides Scala, Java, and Python programming interfaces in a functional
+programming paradigm. Spark usually uses HDFS~\cite{shvachko10} for persistent storage, but
+it can process data stored in S3 or a shared file system such as
+GlusterFS~\cite{davies13} or Lustre~\cite{donovan03}. Spark tracks job lineage, which is used for the
+recomputation of data when a node fails. 
+%Spark has been extended to support a variety of
+%application specific workloads through the GraphX~\cite{gonzalez14} library for graph
+%processing, the MLlib~\cite{sparks13} library for machine learning, and SparkSQL~\cite{armbrust15} for relational processing.
 
 \section{Applying Spark to \\ Many-Task Applications}
 \label{sec:Capability}
@@ -382,7 +349,7 @@ data is spilled to disk at the end of each map and reduce phase, map-reduce perf
 on iterative jobs (jobs that demonstrate the \textbf{pipeline} dataflow pattern).
 
 To resolve these problems, second-generation map-reduce execution systems such as
-DryadLINQ~\cite{yu08} and Spark~\cite{zaharia10} allow for applications to be decomposed into
+DryadLINQ~\cite{yu08} and Spark~\cite{zaharia12} allow for applications to be decomposed into
 DAGs. In these DAGs, nodes represent computation, and the nodes are
 linked by dataflows, which are implemented using a map-reduce style shuffle. In Spark,
 this decomposition is implemented via the Resilient Distributed Dataset~(RDD)
@@ -418,6 +385,7 @@ dataflow primitives and Spark operations.
   \end{center}
 \end{table}
 
+\up
 Beyond using a DAG to describe a computational schedule, Spark improves upon
 Hadoop by adding support for iterative computation. This is accomplished by using an
 in-memory caching model. As compared to other DAG based methods such as DryadLINQ, this enables
@@ -429,9 +397,10 @@ and \textbf{alltoall} dataflows are the only dataflow relationships that are nar
 
 By using a DAG-based scheduling method, Spark is able to provide fault tolerance via
 lineage-based recomputation. If a partition of data is lost, Spark can recover the data
-by re-executing the section of the DAG that computed the lost partition~\cite{zaharia12}. In
-future work, we plan to examine how Spark's lineage information can be used in scientific
-applications to enable the design of reproducible scientific pipelines.
+by re-executing the section of the DAG that computed the lost partition~\cite{zaharia12}. 
+%In future work, we plan to examine Spark's lineage information to enable the design of 
+%reproducible scientific pipelines.
+\zhaonote{removed this future work}
 
 \section{Design and Implementation}
 \label{sec:Design}
@@ -480,10 +449,11 @@ by simply reorganizing the application. We demonstrate an example of this in~\S\
 
 As a contrast, we propose the \emph{library} approach. This approach inherits the legacy code
 base without losing programming flexibility. A demonstration of the value of flexibility is
-given in \S~\ref{sec:Programming}. An additional benefit of integrating at the library
-level is that the data structures are loaded into Spark, which allows users to make use of
-Spark based libraries, such as the machine learning algorithms available through
-MLlib~\cite{sparks13}.
+given in \S~\ref{sec:Programming}. 
+%An additional benefit of integrating at the library
+%level is that the data structures are loaded into Spark, which allows users to make use of
+%Spark based libraries, such as the machine learning algorithms available through
+%MLlib~\cite{sparks13}.
 
 \subsection{Flow Management}
 
@@ -500,9 +470,10 @@ able to process data stored in HDFS, S3, and shared file systems like GPFS, Lust
 We use the \texttt{SparkContext.binaryFiles} method for parallel data access to all storage systems.
 This API loads all files within a directory as a sequence of tuples of the file object and a binary
 stream containing the contents of the file. We then use jFITS library to convert these streams in
-parallel into tuples that users can transform and compute upon. In future work we plan to evaluate
-various other data formats (e.g. Avro~\cite{avro}, Parquet~\cite{parquet}, and HDF5~\cite{folk99})
-with Kira.
+parallel into tuples that users can transform and compute upon. 
+%In future work we plan to evaluate
+%various other data formats (e.g. Avro~\cite{avro}, Parquet~\cite{parquet}, and HDF5~\cite{folk99})
+%with Kira.
 
 \subsection{Parallelism}
 
@@ -657,7 +628,7 @@ In all experiments using Amazon's EC2 service, we use the m2.4xlarge instance.
 This instance type has eight cores (each running at 2.4GHz), 68~GB RAM, two hard disk drives (HDD), and Gigabit Ethernet. 
 We chose a HDD based configuration as opposed to Amazon's newer solid state drive (SSD) backed instances to give a fair comparison
 against the Edison supercomputer, which is backed by HDDs. 
-Software configurations are described in each of the following experiments.
+Software configurations are described in the following experiments.
 
 \subsection{Single Machine Performance}
 \label{sec:Performance-scaleup}
@@ -678,9 +649,11 @@ performance of Kira SE and the C version for various core counts on a single mac
 		\includegraphics[width=85mm]{pictures/scaleup}
 		\caption{Single-Node Scale-Up Performance Comparison between Kira SE and the C Version (lower is better)
 		\label{fig:scaleup}}
+		\up
   	\end{center}
 \end{figure}
 
+\up
 The C version is bound by local disk performance and shows limited improvement with
 an increasing core count. While Kira SE is $7.4\times$ slower than the C implementation
 on a single core, Kira SE is within $2.2\times$ when using all eight cores on the node.
@@ -718,9 +691,11 @@ Across all scales, Kira SE achieves near linear speedup.
 		\includegraphics[width=85mm]{pictures/scaleout}
 		\caption{Scale-Out Performance Comparison between Kira SE and the C Version in Logarithmic Scale (Lower is Bßetter)
 		\label{fig:scaleout}}
+		\up
   	\end{center}
 \end{figure}
 
+\up
 The fundamental driver of Kira SE's linear scalability is it's consistent locality
 hit ratio. Spark and HDFS optimize for data locality during scheduling and achieve a
 locality hit ration above 98\%, as shown in Figure~\ref{fig:locality}. In contrast, the
@@ -732,6 +707,7 @@ size increases.
 		\includegraphics[width=85mm]{pictures/locality}
 		\caption{Locality Hit Ratio (Higher is Better)
 		\label{fig:locality}}
+		\up
   	\end{center}
 \end{figure}
 
@@ -777,6 +753,7 @@ profiled metadata overhead.
 		\includegraphics[width=85mm]{pictures/allgluster}
 		\caption{Kira SE Performance Compared to All GlusterFS Configurations (Lower is Better)
 		\label{fig:allgluster}}
+		\up
   	\end{center}
 \end{figure}
 
@@ -814,26 +791,23 @@ resources via a high-speed network) outperform Kira?
 \subsubsection{Cloud}
 \label{sec:1TB-EC2}
 
-We configure GlusterFS in \emph{replicated} and \emph{distributed} \linebreak modes and compare Kira
+We configure GlusterFS in \emph{replicated} and \emph{distributed} modes and compare Kira
 SE's performance against the C implementation. Kira SE runs $1.1\times$ and $1.3\times$ faster than the C version running on top of
 GlusterFS configured in \emph{distributed} mode on 256 cores and 512 cores respectively. 
 Using the more practical \emph{replicated} configuration of GlusterFS, Kira SE
 is $3.2\times$ and $3.7\times$ faster. A detailed breakdown of the performance numbers is shown in Figure~\ref{fig:1tb-ec2}.
-The C version is slower for several possible reasons:
+The C version is slower for several possible reasons: One of them is that the C version is executed in parallel in a batch mode 
+where node starvation can occur at the end of a run. The other is that the metadata overhead of processing 176,938 files in a 
+single directory introduces significant overhead.
 
 \begin{figure}[t]
 	\begin{center}
 		\includegraphics[width=85mm]{pictures/1TB-EC2}
 		\caption{Kira SE Performance with 1TB Input Compared to the C Version Running on GlusterFS on EC2 (Lower is Better)
 		\label{fig:1tb-ec2}}
+		\up
   	\end{center}
 \end{figure}
-
-\begin{enumerate}
-\item The C version is executed in parallel in a batch mode where node starvation can occur
-at the end of a run.
-\item The metadata overhead of processing 176,938 files in a single directory is too large.
-\end{enumerate}
 
 Comparing to the experiment with the 65GB dataset in Section~\ref{sec:Performance-scaleout},
 Kira SE processes $15.9\times$ more data in $12.5\times$ more time. Removing the Spark
@@ -847,7 +821,7 @@ Section~\ref{sec:Background-EngReq}. This high throughput enables real-time imag
 \subsubsection{Supercomputer}
 
 Many astronomers have access to supercomputers and believe that
-supercomputers outperform commodity clusters for data-intensive applications~\cite{jha14}.
+supercomputers outperform commodity clusters for data-intensive applications.
 To examine this believe, we compare Kira SE on the Amazon cloud versus the performance of
 the C version running on the NERSC Edison supercomputer, a Cray XC 30 System. We use
 mounted Lustre file system which provides a peak throughput of 48GB/s. Each compute
@@ -865,6 +839,7 @@ Figure~\ref{fig:1tb-edison} shows the measurements.
 		\includegraphics[width=85mm]{pictures/1TB-edison}
 		\caption{Kira SE Performance with 1TB Input Compared to the C Version Running on NERSC Edison Supercomputer (Lower is Better)
 		\label{fig:1tb-edison}}
+		\up
   	\end{center}
 \end{figure}
 
@@ -884,8 +859,7 @@ user's performance. A similar situation was carefully studied on the Jaguar supe
 \label{sec:Related}
 
 Many systems have tackled the problem of executing single process programs in parallel
-across large compute clusters. This includes workflow systems such as HTCondor~\cite{litzkow88},
-Cactus~\cite{allen01}, Pegasus~\cite{deelman04}, Galaxy~\cite{goecks10} and Swift~\cite{wilde11},
+across large compute clusters. This includes workflow systems such as HTCondor,
 and ad hoc Hadoop and MPI based approaches.
 
 In a workflow system, programmers can easily connect serial/parallel programs by specifying
@@ -896,33 +870,31 @@ flexibility.
 
 Researchers have used the Hadoop MapReduce~\cite{HADOOP} system to paralleize
 tasks using a map-reduce data model. A variety of applications have been paralleized
-using Hadoop, including SCIMP~\cite{ekanayake08}, CloudBLAST~\cite{matsunaga08} and
-MARISSA~\cite{dede12}. Several applications have been easily enabled through the use
-of the Hadoop Streaming API~\cite{leo09}. Although Hadoop exposes many convenient
+using Hadoop such as CloudBLAST~\cite{matsunaga08}. 
+ Although Hadoop exposes many convenient
 abstractions, it is difficult to target the restrictive map-reduce API~\cite{dewitt08}
-and Hadoop's disk based model makes iterative/pipelined tasks expensive~\cite{ekanayake10}.
+and Hadoop's disk based model makes iterative/pipelined tasks expensive.
 
 MPI has also been used to parallelize a diverse range of workloads. There
 are MPI-based parallel implementations of astronomy image
-mosaicing applications (Montage, \cite{jacob09}), protein docking simulators (DOCK6, \cite{lang09}), and
-sequence alignment and search toolkits(BLAST, \cite{altschul90}) applications. As an
+mosaicing applications (Montage~\cite{jacob09}) and
+sequence alignment and search toolkits (mpiBLAST~\cite{lin08}) applications. As an
 execution system, MPI has two significant drawbacks. First, to implement a many-task
 application on top of MPI, a user must develop a custom C wrapper for the application
 and a custom message-passing approach for communicating between nodes. In practice, the
-communication stages are critical for performance~\cite{lin08}, which means that the
+communication stages are critical for performance, which means that the
 dataflow management scheme must be tailored to the application and hand tuned. Additionally,
 MPI does not provide fault tolerance, which is problematic when running a long lived
 application across many (possibly) unreliable nodes.
 
 Traditionally, distributed workflow systems are run on top of a shared file system. 
-Shared file systems (e.g. GPFS~\cite{schmuck02}, Lustre~\cite{donovan03}, and
+Shared file systems (e.g. Lustre~\cite{donovan03}, and
 GlusterFS~\cite{davies13}) are commonly used because they are compatible with the POSIX
 standard and offer a shared namespace across all nodes. However, shared file systems
-do not expose file locality to workflow systems, thus makaking suboptimal use of local
+do not expose file locality to workflow systems, thus making suboptimal use of local
 disks on the compute nodes when possible. Most tools in the Hadoop ecosystem use
-HDFS~\cite{HDFS, shvachko10}, which is based off of the Google File System~(GFS,
-\cite{ghemawat03}). HDFS and GFS both provide a shared namespace, but are not POSIX
-compliant. Unlike traditional server-based shared file systems, HDFS and GFS use
+HDFS~\cite{shvachko10}). HDFS  provides a shared namespace, but are not POSIX
+compliant. Unlike traditional server-based shared file systems, HDFS uses
 the disks on the compute nodes which enables data locality on filesystem access.
 
 \section{Future Work}
@@ -967,8 +939,8 @@ ecosystem when running embarassingly parallel data intensive scientific applicat
 because ``Big Data'' systems like Apache Spark~\cite{zaharia12} and Hadoop~\cite{HADOOP}
 focus on providing high I/O and data locality during job execution.
 
-We also demonstrated that Spark provides API semantics that are sufficient to support many-task
-applications. The task model, support for common dataflows, and built-in support for fault
+We also demonstrated that Spark provides semantics that are sufficient to support many-task
+applications. The task model, dataflow support, and fault
 tolerance make Spark a strong candidate for enabling data intensive scientific computing
 in the cloud environment.
 
