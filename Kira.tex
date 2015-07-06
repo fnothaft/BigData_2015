@@ -653,7 +653,6 @@ performance of Kira SE and the C version for various core counts on a single mac
   	\end{center}
 \end{figure}
 
-\up
 The C version is bound by local disk performance and shows limited improvement with
 an increasing core count. While Kira SE is $7.4\times$ slower than the C implementation
 on a single core, Kira SE is within $2.2\times$ when using all eight cores on the node.
@@ -695,7 +694,6 @@ Across all scales, Kira SE achieves near linear speedup.
   	\end{center}
 \end{figure}
 
-\up
 The fundamental driver of Kira SE's linear scalability is it's consistent locality
 hit ratio. Spark and HDFS optimize for data locality during scheduling and achieve a
 locality hit ration above 98\%, as shown in Figure~\ref{fig:locality}. In contrast, the
