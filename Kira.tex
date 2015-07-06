@@ -117,6 +117,7 @@ $^*$ AMPLab, University of California, Berkeley \\
 $^\circ$ Berkeley Institute for Data Science, University of California, Berkeley\\
 $^\dagger$ Berkeley Center for Cosmological Physics, University of California, Berkeley\\
 $^\ddagger$ ASPIRE Lab, University of California, Berkeley \\
+\up\up
 \end{tabular}
 } 
 
@@ -481,7 +482,7 @@ Spark provides parallelism at both the thread and process level. By default, Spa
 thread-level parallelism by launching a single Java Virtual Machine~(JVM) per worker machine.
 Users then specify the number of threads to launch per worker (typically, one thread per core).
 However, in Kira SE, neither the jFITS nor the SEP libraries are thread safe. To work around this,
-we configured Spark to support process level level parallelism by launching a worker instance for each
+we configured Spark to support process level parallelism by launching a worker instance for each
 core. This configuration may reduce scalability,
 as it increases the number of workers the master manages. However, our experiments with 512
 workers in \S~\ref{sec:Performance} show that Kira's scalability is not severely impacted by
@@ -648,7 +649,7 @@ performance of Kira SE and the C version for various core counts on a single mac
 \begin{figure}[h]
 	\begin{center}
 		\includegraphics[width=85mm]{pictures/scaleup}
-		\caption{Single-Node Scale-Up Performance Comparison between Kira SE and the C Version (lower is better)
+		\caption{Single-Node Scale-Up Performance Comparison between Kira SE and the C Version (Lower is Better)
 		\label{fig:scaleup}}
 		\up
   	\end{center}
