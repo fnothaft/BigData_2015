@@ -176,14 +176,11 @@ In this work, we investigate an alternate approach, namely the modern big data e
 We build Kira, a flexible and distributed astronomy image processing toolkit built with Apache Spark. 
 We also build a real world application Source Extractor~(Kira SE) with the Kira API.
 With Kira SE as the use case, we study the programming flexibility, dataflow richness, scheduling capacity and performance.
-We confirm that the big data ecosystem is compelling to support many-task applications from the above aspects.
 Particularly for performance, by exploiting data locality, Kira SE achieves a 3.7$\times$ speedup over an equivalent C program when analyzing a 1TB
 dataset with 512 cores on the Amazon EC2 cloud. 
 Leveraging software originally designed for big data infrastructure, Kira SE achieves competitive performance as that of  the C implementation
 running on the NERSC Edison supercomputer.
-From the analysis and experiments, we believe that the big data ecosystem is a compelling candidate for many-task applications and the high end
-HPC platforms are not mandatory for high performance of many-task applications.
-\zhaonote{trying to say the point of this work, let me know if this makes sense to you.}
+Our experience with Kira indicates that emerging Big Data platforms such as Apache Spark are an efficient alternative for many-task scientific applications.  \zhaonote{trying to say the point of this work, let me know if this makes sense to you.}
 
 \end{abstract}
 
@@ -230,8 +227,8 @@ as well as HPC shared file system, e.g. GlusterFS~\cite{davies13} and Lustre~\ci
 The application toolkit also inherits Spark's fault tolerance mechanism, which is a missing feature in the HPC MPI programming model~\cite{gropp96}.
 Our experiments show that Spark is capable of managing $O(10^6)$ tasks and our Kira SE runs 3.7x faster than the equivalent C program on shared file system running in the Amazon EC2 cloud on the 1TB Data Release 7 from the Sloan Digital Sky Survey~\cite{york00}. 
 We also show that running Kira SE in the Amazon EC2 cloud can achieve competitive performance than that of running the equivalent C program on the NERSC Edison supercomputer. 
-These results imply that the the big data ecosystem is a compelling candidate for many-task applications. 
-So that high end HPC platforms are not mandatory for high performance of many-task applications.
+
+Our experience with Kira indicates that emerging Big Data platforms such as Apache Spark are an efficient alternative for many-task scientific applications.   Leveraging such platforms would enable scientists to benefit from the rapid pace of innovation and wide range of systems and technologies that are being driven by wide-spread interest in Big Data analytics.
 \zhaonote{adding the point that high end HPC is not necessary to achieve high performance for many-task applications.}
 Kira is open source software released under an MIT license and is available from \linebreak \url{https://github.com/BIDS/Kira}.
 
@@ -921,10 +918,11 @@ size. Due to its superior data locality, our Spark-based implementation delivers
 implementation running on GlusterFS. Specifically, Kira SE processes the 1TB SSDS DR7 dataset (176,938 tasks)
 $3.7\times$ faster than C over GlusterFS when running on a cluster of 64 m2.4xlarge Amazon
 EC2 instances. Kira SE also has comparable performance (between 18.5\% slower and 75.1\% faster)
-to that of the C version running on the NERSC Edison supercomputer. From the performance
-measurements and comparison, we believe that the Big Data ecosystem is a compelling candidate
-to support the many-task applications and the high end HPC platforms are not mandatory to achieve
-high performance for many-task applications.
+to that of the C version running on the NERSC Edison supercomputer. 
+Our experience with Kira indicates that emerging Big Data platforms such as Apache Spark are an efficient 
+alternative for many-task scientific applications.   Leveraging such platforms would enable scientists to benefit 
+from the rapid pace of innovation and wide range of systems and technologies that are being driven by 
+wide-spread interest in Big Data analytics.
 
 
 %ACKNOWLEDGMENTS are optional
