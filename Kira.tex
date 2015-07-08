@@ -180,8 +180,7 @@ Particularly for performance, by exploiting data locality, Kira SE achieves a 3.
 dataset with 512 cores on the Amazon EC2 cloud. 
 Leveraging software originally designed for big data infrastructure, Kira SE achieves competitive performance as that of  the C implementation
 running on the NERSC Edison supercomputer.
-Our experience with Kira indicates that emerging Big Data platforms such as Apache Spark are an efficient alternative for many-task scientific applications.  \zhaonote{trying to say the point of this work, let me know if this makes sense to you.}
-
+Our experience with Kira indicates that emerging Big Data platforms such as Apache Spark are an efficient alternative for many-task scientific applications.  
 \end{abstract}
 
 % A category with the (minimum) three required fields
@@ -229,7 +228,6 @@ Our experiments show that Spark is capable of managing $O(10^6)$ tasks and our K
 We also show that running Kira SE in the Amazon EC2 cloud can achieve competitive performance than that of running the equivalent C program on the NERSC Edison supercomputer. 
 
 Our experience with Kira indicates that emerging Big Data platforms such as Apache Spark are an efficient alternative for many-task scientific applications.   Leveraging such platforms would enable scientists to benefit from the rapid pace of innovation and wide range of systems and technologies that are being driven by wide-spread interest in Big Data analytics.
-\zhaonote{adding the point that high end HPC is not necessary to achieve high performance for many-task applications.}
 Kira is open source software released under an MIT license and is available from \linebreak \url{https://github.com/BIDS/Kira}.
 
 
@@ -545,8 +543,7 @@ background from the matrix. Once the background is removed, we then extract the 
 from the matrix.
 
 \begin{lstlisting}[caption=Objects Extraction Logic, label=lst:SE, linewidth=0.5\textwidth, xleftmargin=2.5ex]
-val input_rdd = 
-  sparkContext.binaryFiles(src)
+val input_rdd = sparkContext.binaryFiles(src)
 val mtx_rdd = input_rdd.map(f => load(f))
 val objects_rdd = mtx_rdd.map(m => {
   /* mask is a 2-d array with 
@@ -566,8 +563,7 @@ application~\cite{bertin96}, SExtractor does not implement this feature. However
 library level bindings, it is easy to implement a multi-stage refinement pipeline.
 
 \begin{lstlisting}[caption=Iterative Objects Extraction Logic, label=lst:SE-Iter, linewidth=0.5\textwidth, xleftmargin=2.5ex]
-val input_rdd = 
-  sparkContext.binaryFiles(src)
+val input_rdd = sparkContext.binaryFiles(src)
 val mtx_rdd = input_rdd.map(f=>load(f))
 val objects_rdd = mtx_rdd.(m => {
   /*mask is a 2-d array with 
@@ -918,12 +914,11 @@ size. Due to its superior data locality, our Spark-based implementation delivers
 implementation running on GlusterFS. Specifically, Kira SE processes the 1TB SSDS DR7 dataset (176,938 tasks)
 $3.7\times$ faster than C over GlusterFS when running on a cluster of 64 m2.4xlarge Amazon
 EC2 instances. Kira SE also has comparable performance (between 18.5\% slower and 75.1\% faster)
-to that of the C version running on the NERSC Edison supercomputer. 
-Our experience with Kira indicates that emerging Big Data platforms such as Apache Spark are an efficient 
-alternative for many-task scientific applications.   Leveraging such platforms would enable scientists to benefit 
-from the rapid pace of innovation and wide range of systems and technologies that are being driven by 
-wide-spread interest in Big Data analytics.
+to that of the C version running on the NERSC Edison supercomputer.  
 
+We also demonstrated that Big Data platforms such as Apache Spark provide flexible interface by integrating existing code base at the library level.
+The flexible interface, rich dataflow support, task scheduling capacity, locality optimization, and built-in support for fault tolerance make Spark a 
+strong candidate for many-task scientific applications.
 
 %ACKNOWLEDGMENTS are optional
 \section{Acknowledgments}
