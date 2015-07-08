@@ -179,9 +179,11 @@ With Kira SE as the use case, we study the programming flexibility, dataflow ric
 We confirm that the big data ecosystem is compelling to support many-task applications from the above aspects.
 Particularly for performance, by exploiting data locality, Kira SE achieves a 3.7$\times$ speedup over an equivalent C program when analyzing a 1TB
 dataset with 512 cores on the Amazon EC2 cloud. 
-Leveraging software originally designed for big data infrastructure, Kira SE is still up to 1.8$\times$ faster than the C implementation
+Leveraging software originally designed for big data infrastructure, Kira SE achieves competitive performance as that of  the C implementation
 running on the NERSC Edison supercomputer.
-
+From the analysis and experiments, we believe that the big data ecosystem is a compelling candidate for many-task applications and the high end
+HPC platforms are not mandatory for big astronomy data analysis.
+\zhaonote{trying to say the point of this work, let me know if this makes sense to you.}
 
 \end{abstract}
 
@@ -227,7 +229,10 @@ Inherited from Spark, the application toolkit built with Spark can process data 
 as well as HPC shared file system, e.g. GlusterFS~\cite{davies13} and Lustre~\cite{donovan03}.
 The application toolkit also inherits Spark's fault tolerance mechanism, which is a missing feature in the HPC MPI programming model~\cite{gropp96}.
 Our experiments show that Spark is capable of managing $O(10^6)$ tasks and our Kira SE runs 3.7x faster than the equivalent C program on shared file system running in the Amazon EC2 cloud on the 1TB Data Release 7 from the Sloan Digital Sky Survey~\cite{york00}. 
-We also show that running Kira SE in the Amazon EC2 cloud can be up to 1.8x faster than running the equivalent C program on the NERSC Edison supercomputer.
+We also show that running Kira SE in the Amazon EC2 cloud can achieve competitive performance than that of running the equivalent C program on the NERSC Edison supercomputer. 
+These results imply that the the big data ecosystem is a compelling candidate for many-task applications. 
+So that high end HPC platforms are not necessary for big astronomy data analysis.
+\zhaonote{adding the point that high end HPC is not necessary to achieve high performance for many-task applications.}
 Kira is open source software released under an MIT license and is available from \linebreak \url{https://github.com/BIDS/Kira}.
 
 
