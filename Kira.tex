@@ -79,7 +79,7 @@
 %\crdata{0-12345-67-8/90/01}  % Allows default copyright data (0-89791-88-6/97/05) to be over-ridden - IF NEED BE.
 % --- End of Author Metadata ---
 
-\title{Kira: Enabling Flexible Astronomy Image Processing in Clouds}
+\title{Kira: Leveraging Big Data Ecosystem for  Astronomy Image Processing}
 
 %
 % You need the command \numberofauthors to handle the 'placement
@@ -170,16 +170,14 @@ $^\ddagger$ ASPIRE Lab, University of California, Berkeley \\
 \maketitle
 
 \begin{abstract}
-Data intensive scientific analyses are often constructed by composing multiple single-process programs into a \linebreak dataflow.
-Practitioners use dedicated workflow systems as well as Hadoop MapReduce and MPI to parallelize analyses.
-These approaches make various tradeoffs between programming flexibility, storage system efficiency, dataflow expressiveness,
-and resilience. In this work, we investigate these tradeoffs, and ask how we can best balance them
-for data intensive scientific applications in the cloud. We present Kira, a flexible and distributed astronomy
-image processing toolkit built with Apache Spark. 
-We use Kira to demonstrate the efficient parallelization of the Source Extractor~(SE) application. 
+Data intensive scientific analyses are often constructed by composing multiple single-process programs into a dataflow.
+Practitioners often use traditional HPC platform and its software stack to parallelize these analyses.
+In this work, we investigate an alternate approach, namely the modern big data ecosystem, for this type of scientific applications.
+We build Kira, a flexible and distributed astronomy image processing toolkit built with Apache Spark and a real world application Source Extractor~(SE).
+To better understand the big data approach, we use Kira SE to evaluate the programming flexibility, dataflow richness, scheduling capacity and performance.
 By exploiting data locality, Kira SE achieves a 3.7$\times$ speedup over an equivalent C program when analyzing a 1TB
 dataset with 512 cores on the Amazon EC2 cloud. 
-Leveraging software originally designed for cloud-based infrastructure, Kira SE is still up to 1.8$\times$ faster than the C implementation
+Leveraging software originally designed for big data infrastructure, Kira SE is still up to 1.8$\times$ faster than the C implementation
 running on the NERSC Edison supercomputer.
 
 
