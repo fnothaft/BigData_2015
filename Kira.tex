@@ -182,7 +182,7 @@ dataset with 512 cores on the Amazon EC2 cloud.
 Leveraging software originally designed for big data infrastructure, Kira SE achieves competitive performance as that of  the C implementation
 running on the NERSC Edison supercomputer.
 From the analysis and experiments, we believe that the big data ecosystem is a compelling candidate for many-task applications and the high end
-HPC platforms are not mandatory for big astronomy data analysis.
+HPC platforms are not mandatory for high performance of many-task applications.
 \zhaonote{trying to say the point of this work, let me know if this makes sense to you.}
 
 \end{abstract}
@@ -231,7 +231,7 @@ The application toolkit also inherits Spark's fault tolerance mechanism, which i
 Our experiments show that Spark is capable of managing $O(10^6)$ tasks and our Kira SE runs 3.7x faster than the equivalent C program on shared file system running in the Amazon EC2 cloud on the 1TB Data Release 7 from the Sloan Digital Sky Survey~\cite{york00}. 
 We also show that running Kira SE in the Amazon EC2 cloud can achieve competitive performance than that of running the equivalent C program on the NERSC Edison supercomputer. 
 These results imply that the the big data ecosystem is a compelling candidate for many-task applications. 
-So that high end HPC platforms are not necessary for big astronomy data analysis.
+So that high end HPC platforms are not mandatory for high performance of many-task applications.
 \zhaonote{adding the point that high end HPC is not necessary to achieve high performance for many-task applications.}
 Kira is open source software released under an MIT license and is available from \linebreak \url{https://github.com/BIDS/Kira}.
 
@@ -923,7 +923,8 @@ $3.7\times$ faster than C over GlusterFS when running on a cluster of 64 m2.4xla
 EC2 instances. Kira SE also has comparable performance (between 18.5\% slower and 75.1\% faster)
 to that of the C version running on the NERSC Edison supercomputer. From the performance
 measurements and comparison, we believe that the Big Data ecosystem is a compelling candidate
-to support the many-task applications. 
+to support the many-task applications and the high end HPC platforms are not mandatory to achieve
+high performance for many-task applications.
 
 
 %ACKNOWLEDGMENTS are optional
