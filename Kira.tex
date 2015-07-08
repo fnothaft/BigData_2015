@@ -243,8 +243,7 @@ This section reviews the science behind the sky surveys, introduces the source e
 
 Modern astronomical research is increasingly based around large-scale sky surveys.
 Rather than selecting specific targets of study, such a survey will uniformly observe large
-swaths of the sky. These surveys include the Sloan Digital Sky Survey (SDSS)~\cite{york00},
-%the Panoramic Survey Telescope \& Rapid Response System (PanSTARRS)~\cite{kaiser02},
+swaths of the sky. Example surveys include the Sloan Digital Sky Survey (SDSS)~\cite{york00},
 the Dark Energy Survey (DES)~\cite{dark05}, and the Large Synoptic Survey Telescope~(LSST,
 \cite{ivezic08}). Enabled by new telescopes and cameras with wide fields of view, these
 surveys deliver huge datasets that can be used for many different scientific studies
@@ -263,21 +262,20 @@ often results in the discovery of new, extremely rare, transient phenomena.
 
 Source extraction is a key step in astronomical image processing pipelines.
 SExtractor~\cite{bertin96} is a widely used C application for source extraction.
-Users declare $\sim$40 parameters that are passed to the application. Although
-SExtractor is implemented as a monolithic C program that extracts astronomical
-objects from images, the application's logic allows background estimation,
-background removal, object detection, and astrometric and photometric estimation
-to be separated into distinct stages.
+Users need to specify $\sim$40 parameters to run the application. Although
+SExtractor is implemented as a monolithic C program for extrcting astronomical
+objects from images, the application's logic can be further divided as a procedure 
+of background estimation, background removal, object detection, and astrometric 
+and photometric estimation.
 
-To improve the extraction accuracy, we could run multiple iterations of source
+To improve the extraction accuracy, we must run multiple iterations of source
 extraction where we remove the detected objects at the end of each stage. While
-the C program contains the required semantics for building this iterative process,
-it does not expose the interfaces through the command line. In turn, this prevents
-workflow system based approaches from exposing these interfaces to users. To resolve this,
+the original C program contains the required functionalities for building this iterative process,
+it does not expose the interfaces through the command line. To resolve this issue,
 SEP~\cite{barbary2015} reorganizes the code base of SExtractor to expose core
 functionalities via a library. SEP provides both C and Python interfaces. Users can then
-build new applications based on SEP's primitives. Kira implements the source extraction
-functionality by integrating with SEP.
+build the iterative process with SEP's primitives. Kira SE is implemented by calling to
+the SEP library.
 
 \subsection{Engineering Requirements}
 \label{sec:Background-EngReq}
@@ -291,16 +289,25 @@ The LSST uses a 2.4m-wide optical telescope that captures 3.2 billion pixels per
 image. This telescope produces approximately 12.8~GB data in 39~seconds
 for a sustained rate of $\sim$330~MB per second. A typical night produces 13~TB of data. In
 total, the survey will produce 60~PB of raw data, which will be consolidated into a 15~PB catalog.
+This timely processing requirement and the massive amount of data place a performance challenge for the 
+processing pipeline. 
 
 \subsection{Spark}
 Apache Spark is a dataflow-based execution system that provides a functional, collection
-oriented API~\cite{zaharia12}. \linebreak Spark's development was motivated by a need for a
+oriented API~\cite{zaharia12}. Spark's development was motivated by a need for a
 system that could rapidly execute iterative workloads on very large datasets. Spark has
-become widely adopted in industry, and several academic research groups have used Spark
-for the analysis of scientific datasets in neuroscience~\cite{freeman14} and genomics~\cite{nothaft15}.
+become widely adopted in industry, and academic research groups have used Spark
+for the analysis of scientific datasets in areas such as neuroscience~\cite{freeman14} and genomics~\cite{nothaft15}.
+
+Spark is centered around the Resilient Distributed Dataset~(RDD) abstraction~\cite{zaharia12}.
+To a programmer, RDDs appear as an immutable collection of independent items that are 
+distributed across the cluster. RDDs are logically immutable and are transformed using a
+functional API. Operations on RDDs are evaluated lazily, enabling the system to schedule 
+execution and data movement with better knowledge of the operations to be performed than 
+systems that immediately execute each stage.
 
 Spark provides Scala, Java, and Python programming interfaces in a functional
-programming paradigm. Spark usually uses HDFS~\cite{shvachko10} for persistent storage, but
+programming paradigm. Spark uses HDFS~\cite{shvachko10} for persistent storage, but
 it can process data stored in S3 or a shared file system such as
 GlusterFS~\cite{davies13} or Lustre~\cite{donovan03}. Spark tracks job lineage, which is used for the
 recomputation of data when a node fails. 
@@ -312,10 +319,10 @@ recomputation of data when a node fails.
 \label{sec:Capability}
 
 Scientific analysis pipelines are frequently assembled by building a dataflow out of many
-tasks~\cite{katz11}. Many-task \linebreak pipelines are used in many scientific research
+single-process programs. Example applications are Montage~\cite{jacob09}, BLAST~\cite{altschul90}, and the high energy physics histogram analysis application~\cite{ekanayake08}. Many-task applications have been seen in scientific research
 domains including astronomy, biochemistry, bioinformatics, psychology, economics, climate science,
 and neuroscience. The tasks in these pipelines are typically short lived and are connected by
-producer-consumer data sharing relationships. A previous study~\cite{katz11} identified
+producer-consumer data sharing relationships. A previous survey study~\cite{katz11} identified
 seven common dataflow patterns among a group of many-task applications. The patterns
 include \textbf{pipeline}, \textbf{broadcast}, \textbf{scatter}, \textbf{gather},
 \textbf{reduce}, \textbf{allgather}, and \textbf{alltoall}. All many-task applications
@@ -329,17 +336,13 @@ large datasets, the map-reduce API has consistently been criticized as inflexibl
 Additionally, since jobs are restricted to a single map and reduce phase each, tools such as
 FlumeJava~\cite{chambers10} are necessary for assembling pipelines of map-reduce jobs. Since
 data is spilled to disk at the end of each map and reduce phase, map-reduce performs poorly
-on iterative jobs (jobs that demonstrate the \textbf{pipeline} dataflow pattern).
+on iterative jobs (jobs that demonstrate the \textbf{pipeline} dataflow pattern)~\cite{zaharia12}.
 
 To resolve these problems, second-generation map-reduce execution systems such as
 DryadLINQ~\cite{yu08} and Spark~\cite{zaharia12} allow for applications to be decomposed into
 DAGs. In these DAGs, nodes represent computation, and the nodes are
-linked by dataflows, which are implemented using a map-reduce style shuffle. In Spark,
-this decomposition is implemented via the Resilient Distributed Dataset~(RDD)
-abstraction~\cite{zaharia12}. To a programmer, RDDs appear as an immutable collection of independent
-items that are distributed across the cluster. RDDs are logically immutable and are transformed using a
-functional API. 
-Operations on RDDs are evaluated lazily, enabling the system to schedule execution and data movement with better knowledge of the operations to be performed than systems which imperatively execute each stage.
+linked by dataflows. In Spark, this decomposition is implemented via the Resilient Distributed Dataset~(RDD)
+abstraction~\cite{zaharia12}.
 
 All seven common many-task application dataflow patterns map precisely to a sequence of
 transformations in \linebreak Apache Spark. Table~\ref{tb:Patterns} demonstrates the mapping between
@@ -370,7 +373,7 @@ dataflow primitives and Spark operations.
 
 \up
 Beyond using a DAG to describe a computational schedule, Spark improves upon
-Hadoop by adding support for iterative computation. This is accomplished by using an
+Hadoop MapReduce by adding support for iterative computation. This is accomplished by using an
 in-memory caching model. As compared to other DAG based methods such as DryadLINQ, this enables
 the efficient execution of chained \textbf{pipeline} stages. In a chained \textbf{pipeline},
 I/O and communication are only performed before the first stage of the chain, and after the
@@ -381,14 +384,11 @@ and \textbf{alltoall} dataflows are the only dataflow relationships that are nar
 By using a DAG-based scheduling method, Spark is able to provide fault tolerance via
 lineage-based recomputation. If a partition of data is lost, Spark can recover the data
 by re-executing the section of the DAG that computed the lost partition~\cite{zaharia12}. 
-%In future work, we plan to examine Spark's lineage information to enable the design of 
-%reproducible scientific pipelines.
-\zhaonote{removed this future work}
 
-\section{Design and Implementation}
+\section{Kira Design and Implementation}
 \label{sec:Design}
 
-When designing Kira, we focused on improving computation and I/O cost while allowing expressive dataflow management.
+When designing Kira, we focused on improving computation and  I/O cost as well as the expressive programming interface.
 Once the design was complete, we tuned Spark's parallelism level and scheduling algorithm for better performance.
 Figure~\ref{fig:architecture} shows Kira's overall architecture and the interactions between parts of the design.
 
@@ -400,11 +400,12 @@ Figure~\ref{fig:architecture} shows Kira's overall architecture and the interact
   	\end{center}
 \end{figure}
 
-To run Kira, we dispatch the application to the Spark driver node. The Spark driver node is then
-responsible for managing control flow, dataflow, and task scheduling by coordinating the Spark
-cluster's worker nodes. The Spark master accesses distributed/parallel file systems for metadata,
-such as structure of a given directory. The actual I/O is distributed across the worker nodes in
-an embarrassingly parallel operation. When a task is scheduled on a worker node, the worker executes
+To run Kira, we dispatch the application to the Kira Master, which runs on top of Spark Master. 
+The Kira Master node is then responsible for managing control flow, dataflow, and task scheduling 
+by coordinating the Kira Worker, which runs on top of Spark Worker. 
+The Kira Master accesses distributed/parallel file systems for metadata.
+The actual I/O is distributed across the Kira Worker nodes in
+an embarrassingly parallel operation. When a task is scheduled on a Kira Worker node, the Kira Worker executes
 the task by calling out via the Java Native Interface (JNI) to the SEP library that is distributed to all worker nodes.
 
 \subsection{Computation}
@@ -418,21 +419,20 @@ We considered three approaches when implementing the Source Extractor algorithm 
 \textbf{library} that we call.
 \end{itemize}
 
-Although \emph{rewriting} the C SExtractor code in Scala, Java, or Python for use with Spark is arguably
-the ``architecturally cleanest'' approach, moving the computational kernel to the JVM will
-reduce the performance of the application. Additionally, this approach requires a tremendous
-amount of effort and increases the likelihood of introducing bugs into the application. 
+Although {\em Rewriting}  all functions in the C SExtractor code with Scala seems straightforward to make use of Spark,
+there is going to be performance degradation for the computation part of the C SExtractor. 
+Additionaly, this approach requires a tremendous amount of effort. 
 The \emph{workflow} commonly does not modify the original executable. Spark's
 Resilient Distributed Dataset~(RDD) API supports a pipe function, which enables piping data
 stored in an RDD to a shell command via standard input and output. It is possible for Kira to
 integrate with the C code base at this level. However, this approach sacrifices programming
 flexibility in cases where the original application has hard coded program logic that restricts
-the implementation of an advanced function. In many cases, these advanced functions can be composed
-by simply reorganizing the application. We demonstrate an example of this in~\S\ref{sec:Programming}.
+the implementation of an advanced function. In some cases, these advanced functions can be composed
+by iteratively calling only parts of the hard-coded program logic. We demonstrate an example of this in~\S\ref{sec:Programming}.
 
 As a contrast, we propose the \emph{library} approach. This approach inherits the legacy code
-base without losing programming flexibility. A demonstration of the value of flexibility is
-given in \S~\ref{sec:Programming}. 
+base without losing programming flexibility. A use case demonstration  of flexibility is
+given in Listing~\ref{lst:SE-Iter}. 
 %An additional benefit of integrating at the library
 %level is that the data structures are loaded into Spark, which allows users to make use of
 %Spark based libraries, such as the machine learning algorithms available through
@@ -440,8 +440,8 @@ given in \S~\ref{sec:Programming}.
 
 \subsection{Flow Management}
 
-Control flow management is done through Scala for Spark or through Python for PySpark.
-Spark implements a complete and sufficient set of dataflows, as demonstrated in
+Control flow management is done through Scala for Spark.
+Spark supports a rich set of dataflows, as demonstrated in
 \S~\ref{sec:Capability}. To construct dataflows in Kira, users need to understand
 the SparkContext and RDD APIs.
 
