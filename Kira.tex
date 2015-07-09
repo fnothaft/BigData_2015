@@ -447,16 +447,26 @@ the SparkContext and RDD APIs.
 
 \subsection{I/O}
 \label{sec:Design-I/O}
-Kira uses the jFITS~\cite{jfits} library to read and write data in the Flexible Image Transport System (FITS)~\cite{wells81} format,
-which is a standard data interchange format for astronomy. For our intended use-case, Kira must be
-able to process data stored in HDFS, S3, and shared file systems like GPFS, Lustre and GlusterFS.
-We use the \texttt{SparkContext.binaryFiles} method for parallel data access to all storage systems.
-This API loads all files within a directory as a sequence of tuples of the file object and a binary
-stream containing the contents of the file. We then use jFITS library to convert these streams in
-parallel into tuples that users can transform and compute upon. 
-%In future work we plan to evaluate
-%various other data formats (e.g. Avro~\cite{avro}, Parquet~\cite{parquet}, and HDF5~\cite{folk99})
-%with Kira.
+The Flexible Image Transport System (FITS)~\cite{wells81} format is a widely adopted file format for astronomy
+images. Each FITS file combines a ASCII text part for metadata and a binary part for the actual image.
+Many sky surveys release data products in the FITS format. This requires Kira has to be compatible with 
+the FITS format. 
+One the other hand, one notable difference between HDFS and the traditional POSIX compatible file system is 
+the exposure of file locality information. HDFS client exposes a set of APIs for users to customized the input file
+format while the underlying system guarantees the locality when loading the files. 
+Spark in turn calls to the HDFS client APIs to load files from HDFS with locality optimization. 
+
+The mixed text and binary contents of FITS format makes it challenging for Kira to be compatible with.
+One way for Kira to be compatible with the FITS format while preserving the file locality is to customize Spark's
+HDFS client by passing the FITS class definition. This approach requires changes to the Spark code base and 
+introduces additional overhead to manage an extra Spark branch that is compatible with the FITS format.
+
+To better isolate Kira code from Spark, we use an alternate solution that is based on 
+the \texttt{SparkContext.binaryFiles()} API, with which we do not have to change the Spark source code.
+This API loads all files within a directory as a sequence of tuples. Each tuple contains the file object and a byte
+stream containing the contents of the file. We then use jFITS~\cite{jfits} library to convert these byte streams 
+into FITS objects that users can transform and compute upon. 
+
 
 \subsection{Parallelism}
 
@@ -486,7 +496,7 @@ $t$ to start. The policy is tunable through three options:
 These parameters allow users to specify how much time a task will wait before being sent to another
 process, node, or rack. For Kira SE, we have found that data balancing can 
 impact task distribution, leading to node starvation and a reduction in overall performance.
-Loading the 65GB (11,150 files) to a 16-node HDFS deployment ideally should result in 699 files on each node.
+Loading a 65GB (11,150 files) dataset from SDSS Data Release 2 to a 16-node HDFS deployment ideally should result in 699 files on each node.
 In reality, the number of files on each node is varies between 617 and 715.
 Enforcing locality with longer {\em spark.locality.wait} time (3000 ms) leads to task distribution imbalance, which makes
 Kira SE 4.5\% slower than running with {\em spark.locality.wait} set to 0 ms.
@@ -494,7 +504,7 @@ In practice, we set all {\em spark.locality.wait} parameters to zero, so that ta
 This setting effectively avoids the starving situation and improves the overall time-to-solution.
 
 The root cause of the delay scheduling ineffectiveness is the small input file size of the Kira SE tasks. 
-Each input file is $\sim$6MB, while a typical Spark/Hadoop application accesses files with a trunk size of 64/128 MB.
+Each input file is $\sim$6MB, while a typical Spark/Hadoop application accesses files with a block size of 64/128 MB~\cite{shvachko10}.
 Delay scheduling works effectively when it is expensive to move the data through network. The small input
 file size means that this assumption is not true, leading to reduced cost for scheduling without locality.
 We notice that the small file size is why Kira SE is CPU bound, making Kira SE
@@ -589,10 +599,10 @@ is then used for further refinement in the next loop iteration.
 \label{sec:Performance}
 
 We evaluate Kira SE's performance against the C implementation with the SEP library
-(referred as the C version in the following text). Kira SE performs an identical amount of
+(referred as the C version in the following text). Because it uses SEP, Kira SE performs an identical amount of
 computation and I/O as the C version.
 
-To run the C version in parallel, we launching a number of processes in the background and then wait
+To run the C version in parallel, we launch a number of processes in the background and then wait
 for processes to finish before starting another batch. When running on multiple nodes,
 the input dataset is stored in a shared file system spread across all available nodes
 (GlusterFS on the cloud and Lustre on the supercomputer). To enable distributed processing,
@@ -601,7 +611,7 @@ independent partition of files.
 
 To understand Spark's overhead, we compare the C implementation against Kira SE on a single
 machine. Then we fix the problem size and scale Kira SE and the C implementation across a
-various number of machines on EC2 to understand the relative scalability of each approach.
+varying number of machines on EC2 to understand the relative scalability of each approach.
 The 1TB experiments demonstrate the difference in performance between Kira SE and the C version
 for large dataset processing. Finally, we show some interesting results when running the C
 version on the Edison supercomputer that is deployed at National Energy Research Scientific Computing Center (NERSC).
@@ -616,8 +626,8 @@ Software configurations are described in the following experiments.
 \label{sec:Performance-scaleup}
 
 The purpose of the scale-up experiments is to understand Spark's overhead by running
-Kira SE on a single node. Slowdown will be caused mainly by Java Virtual Machine (JVM) overhead, and result
-serialization at ``narrow'' shuffle dependencies. We also wanted to identify the factors
+Kira SE on a single node. Slowdown is caused mainly by Java Virtual Machine (JVM) overhead. 
+We also wanted to identify the factors
 that bound Kira SE's performance. For both Kira SE and the C implementation, we store data
 locally in an ext4 file system.
 
@@ -646,7 +656,7 @@ We also profile the C implementation with both warm and cold file system caches.
 cold cache, the job completed in 371 seconds while the job completed in 83 seconds when
 running with a warm cache. This indicates that 78\% of job execution time is consumed by
 I/O (reading and writing data between local disk and memory). Since the C implementation of
-SExtractor is disk bound, we believe that it is a data intensive application. 
+SExtractor is disk bound, we believe that it is representative of a data intensive application. 
 
 \subsection{Scale-Out Performance}
 \label{sec:Performance-scaleout}
@@ -661,8 +671,8 @@ We use a 65GB dataset from the SDSS DR2 survey that comprises 11,150 image files
 Kira SE was configured to use HDFS as a storage system, while the C version used GlusterFS. 
 Both HDFS and GlusterFS are configured with a replication factor of two.
 
-Figure~\ref{fig:scaleout} demonstrates the performance of Kira SE and the C version across
-multiple compute nodes. Kira SE achieves only 37\% of the throughput of the C version
+Figure~\ref{fig:scaleout} shows the performance of Kira SE and the C version across
+multiple compute nodes in log scale. Kira SE is 2.7x slower as the C version
 on eight cores. However, the gap between the two implementations decreases as we scale up. 
 On 256 cores and 512 cores, Kira SE is respectively 5.6\% and 22.4\% faster than the C version.
 Across all scales, Kira SE achieves near linear speedup.
@@ -676,9 +686,10 @@ Across all scales, Kira SE achieves near linear speedup.
   	\end{center}
 \end{figure}
 
-The fundamental driver of Kira SE's linear scalability is it's consistent locality
-hit ratio. Spark and HDFS optimize for data locality during scheduling and achieve a
-locality hit ration above 98\%, as shown in Figure~\ref{fig:locality}. In contrast, the
+The fundamental driver of Kira SE's linear scalability is it's consistent local disk
+hit ratio, which is the ratio between the number of tasks that access the input file 
+on local disk and total number of tasks. Spark and HDFS optimize for data locality during scheduling and achieve a
+hit ration above 98\%, as shown in Figure~\ref{fig:locality}. In contrast, the
 C implementation's locality hit ratio decreases linearly with the log of the cluster
 size increases.
 
@@ -802,9 +813,9 @@ Section~\ref{sec:Background-EngReq}. This high throughput enables real-time imag
 
 Many astronomers have access to supercomputers and believe that
 supercomputers outperform commodity clusters for data-intensive applications.
-To examine this believe, we compare Kira SE on the Amazon cloud versus the performance of
+To examine this belief, we compare Kira SE on the Amazon cloud versus the performance of
 the C version running on the NERSC Edison supercomputer, a Cray XC 30 System. We use
-mounted Lustre file system which provides a peak throughput of 48GB/s. Each compute
+the Lustre file system which provides a peak throughput of 48GB/s. Each compute
 node of Edison is equipped with a 24-core Ivy Bridge processor, with a 2.4GHz clock rate.
 This is comparable to the CPU speed of the Amazon EC2 m2.4xlarge instance (eight vCPUs of
 Intel Xeon E5-2665, each running at 2.4GHz). The experiments on Edison run on 21
@@ -830,8 +841,8 @@ However, when the machine is busy, the C version runs $1.75\times$ slower than K
 Given the performance loss introduced by virtual machines on EC2~\cite{li13},
 the actual Kira SE performance on bare-metal computers should be close to the idle performance
 of the supercomputer. When Edison was saturated, we were not able to launch the CCM mode.
-We believe that cause this problem is caused by sharing the single Aries network between both inter-process
-communication and I/O. The network resource is not sufficiently isolated to preserve every
+We believe that this problem is caused by sharing the single Aries network between both inter-process
+communication and I/O. The network resource is not fairly shared to preserve every
 user's performance. A similar situation was carefully studied on the Jaguar supercomputer
 (a Cray XK6 machine, \cite{xie12}).
 
@@ -849,11 +860,11 @@ scheme that can be applied to a broad range of applications, but at the cost of 
 flexibility.
 
 Researchers have used the Hadoop MapReduce~\cite{HADOOP} system to parallelize
-tasks using a map-reduce data model. A variety of applications have been parallelized
+tasks using a map-reduce data model. A variety of scientific applications have been parallelized
 using Hadoop such as CloudBLAST~\cite{matsunaga08}. 
- Although Hadoop exposes many convenient
-abstractions, it is difficult to target the restrictive map-reduce API~\cite{dewitt08}
-and Hadoop's disk based model makes iterative/pipelined tasks expensive.
+Although Hadoop exposes many convenient abstractions, it is difficult to express the application 
+with the restrictive map-reduce API~\cite{dewitt08} and Hadoop's disk based model makes 
+iterative/pipelined tasks expensive.
 
 MPI has also been used to parallelize a diverse range of workloads. There
 are MPI-based parallel implementations of astronomy image
@@ -923,7 +934,7 @@ strong candidate for many-task scientific applications.
 %ACKNOWLEDGMENTS are optional
 \section{Acknowledgments}
 
-This research is supported in part by NSF CISE Expeditions Award CCF-1139158, LBNL Award 7076018, and DARPA XData Award FA8750-12-2-0331, and gifts from Amazon Web Services, Google, SAP,  The Thomas and Stacey Siebel Foundation, Adatao, Adobe, Apple, Inc., Blue Goji, Bosch, C3Energy, Cisco, Cray, Cloudera, EMC, Ericsson, Facebook, Guavus, Huawei, Intel, Microsoft, NetApp, Pivotal, Samsung, Splunk, Virdata, VMware, and Yahoo!. Author FAN is supported by a National Science Foundation Graduate Research Fellowship.
+This research is supported in part by NSF CISE Expeditions Award CCF-1139158, DOE Award SN10040 DE-SC0012463, and DARPA XData Award FA8750-12-2-0331, and gifts from Amazon Web Services, Google, IBM, SAP, The Thomas and Stacey Siebel Foundation, Adatao, Adobe, Apple, Inc., Blue Goji, Bosch, C3Energy, Cisco, Cray, Cloudera, EMC2, Ericsson, Facebook, Guavus, HP, Huawei, Informatica, Intel, Microsoft, NetApp, Pivotal, Samsung, Schlumberger, Splunk, Virdata and VMware. Author Frank Austin Nothaft is supported by a National Science Foundation Graduate Research Fellowship.
 
 This research is also supported in part by the Gordon and Betty Moore
 Foundation and the Alfred P. Sloan Foundation together through the
