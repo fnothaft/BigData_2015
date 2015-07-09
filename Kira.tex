@@ -595,19 +595,36 @@ Listing~\ref{lst:SE-Iter} is similar to Listing~\ref{lst:SE}. However, we wrap t
 extraction logic in a for loop. At each stage, we make an update to the mask variable, which
 is then used for further refinement in the next loop iteration.
 
+\section{A Solution with HPC Ecosystem}
+A typical way of parallelize many-task application such as source extractor is to use scripting language
+or MPI to launch multiple tasks concurrently. Figure~\ref{fig:hpc-architecture} shows architecture and
+inter-component interactions of such a solution.
+
+All the input files are stored in the shared file system, e.g. GlusterFS or Luster. We use a master script
+first to read all the input file names, then partition the file names into partitions. After that, the master
+script informs the worker scripts on each node to process and independent partition of files in a batch 
+manner.
+
+For the GlusterFS, all metadata is spread across all nodes. So the metadata query from the master script
+needs to communicate with all nodes. And the actual file I/O are done within the worker scripts, while 
+this POSIX I/O does not have the notion of locality. For the case of Luster file system, the metadata is
+stored on one or a few metadata servers, while the actual file I/O is handled in a similar way as GlusterFS.
+
+\begin{figure}[t]
+	\begin{center}
+		\includegraphics[width=85mm]{pictures/HPC-Architecture}
+		\caption{Overview of a Parallel Version of Source Extractor Architecture and Inter-Component Interactions with HPC Ecosystem}
+		\label{fig:hpc-architecture}
+  	\end{center}
+\end{figure}
+
+
 \section{Performance}
 \label{sec:Performance}
 
 We evaluate Kira SE's performance against the C implementation with the SEP library
 (referred as the C version in the following text). Because it uses SEP, Kira SE performs an identical amount of
 computation and I/O as the C version.
-
-To run the C version in parallel, we launch a number of processes in the background and then wait
-for processes to finish before starting another batch. When running on multiple nodes,
-the input dataset is stored in a shared file system spread across all available nodes
-(GlusterFS on the cloud and Lustre on the supercomputer). To enable distributed processing,
-we first partition the input file list into pieces, and then let each node process an
-independent partition of files.
 
 To understand Spark's overhead, we compare the C implementation against Kira SE on a single
 machine. Then we fix the problem size and scale Kira SE and the C implementation across a
