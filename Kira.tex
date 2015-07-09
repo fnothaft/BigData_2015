@@ -600,16 +600,6 @@ A typical way of parallelize many-task application such as source extractor is t
 or MPI to launch multiple tasks concurrently. Figure~\ref{fig:hpc-architecture} shows architecture and
 inter-component interactions of such a solution.
 
-All the input files are stored in the shared file system, e.g. GlusterFS or Luster. We use a master script
-first to read all the input file names, then partition the file names into partitions. After that, the master
-script informs the worker scripts on each node to process and independent partition of files in a batch 
-manner.
-
-For the GlusterFS, all metadata is spread across all nodes. So the metadata query from the master script
-needs to communicate with all nodes. And the actual file I/O are done within the worker scripts, while 
-this POSIX I/O does not have the notion of locality. For the case of Luster file system, the metadata is
-stored on one or a few metadata servers, while the actual file I/O is handled in a similar way as GlusterFS.
-
 \begin{figure}[t]
 	\begin{center}
 		\includegraphics[width=85mm]{pictures/HPC-Architecture}
@@ -617,6 +607,18 @@ stored on one or a few metadata servers, while the actual file I/O is handled in
 		\label{fig:hpc-architecture}
   	\end{center}
 \end{figure}
+
+All the input files are stored in the shared file system, e.g. GlusterFS or Luster. We use a master script
+first to read all the input file names, then partition the file names into partitions. After that, the master
+script informs the worker scripts on each node to process and independent partition of files in parallel 
+in a batch manner.
+
+For the GlusterFS, all metadata is spread across all nodes. So the metadata query from the master script
+needs to communicate with all nodes. And the actual file I/O are done within the worker scripts, while 
+this POSIX I/O does not have the notion of locality. For the case of Luster file system, the metadata is
+stored on one or a few metadata servers, while the actual file I/O is handled in a similar way as GlusterFS.
+
+
 
 
 \section{Performance}
