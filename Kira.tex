@@ -261,7 +261,7 @@ can be detected in large numbers to better measure dark energy, and the large su
 often results in the discovery of new, extremely rare, transient phenomena.
 
 \subsection{Source Extraction}
-
+\label{sec:Background-SE}
 Source extraction is a key step in astronomical image processing pipelines.
 SExtractor~\cite{bertin96} is a widely used C application for source extraction.
 Users need to specify $\sim$40 parameters to run the application. Although
@@ -389,9 +389,17 @@ by re-executing the section of the DAG that computed the lost partition~\cite{za
 \section{Kira Design and Implementation}
 \label{sec:Design}
 
-When designing Kira, we focused on improving computation and  I/O cost as well as the expressive programming interface.
-Once the design was complete, we tuned Spark's parallelism level and scheduling algorithm for better performance.
+When designing Kira, the astronomy image processing toolkit, 
+we focused on improving computation and  I/O cost as well as on providing an expressive programming interface.
+This section discusses the architecture overview in \S\ref{sec:Design-Overview} and the computation and I/O implementation
+in \S\ref{sec:Design-Computation} and \S\ref{sec:Design-I/O}, respectively.
+
+\subsection{Architecture Overview}
+\label{sec:Design-Overview}
 Figure~\ref{fig:architecture} shows Kira's overall architecture and the interactions between parts of the design.
+There is a single Kira master that runs on top of Spark master. A number of Kira workers, each runs
+as Spark workers. The SEP library is deployed with Kira workers on each node. The input files are
+stored in the underlying file system.
 
 \begin{figure}[t]
 	\begin{center}
@@ -402,50 +410,48 @@ Figure~\ref{fig:architecture} shows Kira's overall architecture and the interact
   	\end{center}
 \end{figure}
 
-To run Kira, we dispatch the application to the Kira Master, which runs on top of Spark Master. 
-The Kira Master node is then responsible for managing control flow, dataflow, and task scheduling 
-by coordinating the Kira Worker, which runs on top of Spark Worker. 
+
+To run Kira, we dispatch the compiled program, the parameters, and library dependencies to the Kira master.
+The Kira Master is then responsible for managing control flow, dataflow, and task scheduling 
+by coordinating the Kira workers. 
 The Kira Master accesses distributed/parallel file systems for metadata.
-The actual I/O is distributed across the Kira Worker nodes in
-an embarrassingly parallel operation. When a task is scheduled on a Kira Worker node, the Kira Worker executes
-the task by calling out via the Java Native Interface (JNI) to the SEP library that is distributed to all worker nodes.
+The actual I/O is distributed across the Kira worker nodes in
+parallel. When a task is scheduled on a Kira worker node, the Kira worker executes
+the task by calling out via the Java Native Interface (JNI) to the SEP library.
 
 \subsection{Computation}
-
+\label{sec:Design-Computation}
 We considered three approaches when implementing the Source Extractor algorithm in Kira:
 
 \begin{itemize}
 \item We can \textbf{rewrite} the Source Extractor algorithm from scratch,
-\item We can connect existing programs into a \textbf{workflow}, or
+\item We can connect existing programs as \textbf{monolithic} pieces without changing them, or
 \item We can reorganize the C-based SExtractor implementation to expose a programmable
 \textbf{library} that we call.
 \end{itemize}
 
-Although {\em Rewriting}  all functions in the C SExtractor code with Scala seems straightforward to make use of Spark,
-there is going to be performance degradation for the computation part of the C SExtractor. 
-Additionaly, this approach requires a tremendous amount of effort. 
-The \emph{workflow} commonly does not modify the original executable. Spark's
+Although {\em Rewriting}  all functions in the C SExtractor code with Scala seems to be straightforward way to make use of Spark,
+there would be performance degradation for the computation part of the C SExtractor. 
+Additionaly, this approach requires a tremendous amount of programming effort. 
+The \emph{monolithic} commonly does not modify the original executable. Spark's
 Resilient Distributed Dataset~(RDD) API supports a pipe function, which enables piping data
 stored in an RDD to a shell command via standard input and output. It is possible for Kira to
 integrate with the C code base at this level. However, this approach sacrifices programming
 flexibility in cases where the original application has hard coded program logic that restricts
 the implementation of an advanced function. In some cases, these advanced functions can be composed
-by iteratively calling only parts of the hard-coded program logic. We demonstrate an example of this in~\S\ref{sec:Programming}.
+by iteratively calling only parts of the hard-coded program logic. We showed an example of this in~\S\ref{sec:Background-SE}.
 
-As a contrast, we propose the \emph{library} approach. This approach inherits the legacy code
-base without losing programming flexibility. A use case demonstration  of flexibility is
-given in Listing~\ref{lst:SE-Iter}. 
+To solve the inflexible programming issue of the \emph{monolithic} solution, we adopt the \emph{library} approach. 
+This approach inherits the legacy code base without losing programming flexibility.  
+With the library interface, Kira users can build an iterative source
+extractor by repeatedly calling into a group of Kira APIs. Listing~\ref{lst:SE-Iter} shows the source code of the
+iterative source extractor.
+
 %An additional benefit of integrating at the library
 %level is that the data structures are loaded into Spark, which allows users to make use of
 %Spark based libraries, such as the machine learning algorithms available through
 %MLlib~\cite{sparks13}.
 
-\subsection{Flow Management}
-
-Control flow management is done through Scala for Spark.
-Spark supports a rich set of dataflows, as demonstrated in
-\S~\ref{sec:Capability}. To construct dataflows in Kira, users need to understand
-the SparkContext and RDD APIs.
 
 \subsection{I/O}
 \label{sec:Design-I/O}
@@ -453,65 +459,22 @@ The Flexible Image Transport System (FITS)~\cite{wells81} format is a widely ado
 images. Each FITS file combines a ASCII text part for metadata and a binary part for the actual image.
 Many sky surveys release data products in the FITS format. This requires Kira has to be compatible with 
 the FITS format. 
-One the other hand, one notable difference between HDFS and the traditional POSIX compatible file system is 
-the exposure of file locality information. HDFS client exposes a set of APIs for users to customized the input file
-format while the underlying system guarantees the locality when loading the files. 
+On the other hand, one notable difference between HDFS and the traditional POSIX compatible file system is 
+the exposure of file locality information. HDFS client exposes a set of APIs for users to customize the input file
+format while the underlying system guarantees locality when loading the files. 
 Spark in turn calls to the HDFS client APIs to load files from HDFS with locality optimization. 
 
-The mixed text and binary contents of FITS format makes it challenging for Kira to be compatible with.
-One way for Kira to be compatible with the FITS format while preserving the file locality is to customize Spark's
+The mixed text and binary contents of FITS format makes compatibility with Kira difficult.
+One way for Kira to be compatible with the FITS format while preserving file locality is to customize Spark's
 HDFS client by passing the FITS class definition. This approach requires changes to the Spark code base and 
 introduces additional overhead to manage an extra Spark branch that is compatible with the FITS format.
 
 To better isolate Kira code from Spark, we use an alternate solution that is based on 
-the \texttt{SparkContext.binaryFiles()} API, with which we do not have to change the Spark source code.
+the \texttt{SparkContext.binaryFiles()} API.
 This API loads all files within a directory as a sequence of tuples. Each tuple contains the file object and a byte
 stream containing the contents of the file. We then use jFITS~\cite{jfits} library to convert these byte streams 
 into FITS objects that users can transform and compute upon. 
 
-
-\subsection{Parallelism}
-
-Spark provides parallelism at both the thread and process level. By default, Spark makes use of
-thread-level parallelism by launching a single Java Virtual Machine~(JVM) per worker machine.
-Users then specify the number of threads to launch per worker (typically, one thread per core).
-However, in Kira SE, neither the jFITS nor the SEP libraries are thread safe. To work around this,
-we configured Spark to support process level parallelism by launching a worker instance for each
-core. This configuration may reduce scalability,
-as it increases the number of workers the master manages. However, our experiments with 512
-workers in \S~\ref{sec:Performance} show that Kira's scalability is not severely impacted by
-worker management overhead.
-
-\subsection{Scheduling}
-
-Spark's task-scheduling policy aims to maximize data locality by using
-delay scheduling~\cite{zaharia10ds}. In this scheduling paradigm, if node $n$ has the data needed
-to run job $j$, job $j$ will execute on node $n$ if job $j$ would wait less than a threshold time
-$t$ to start. The policy is tunable through three options:
-
-\begin{itemize}
-\item{spark.locality.wait.process}
-\item{spark.locality.wait.node}
-\item{spark.locality.wait.rack}
-\end{itemize}
-
-These parameters allow users to specify how much time a task will wait before being sent to another
-process, node, or rack. For Kira SE, we have found that data balancing can 
-impact task distribution, leading to node starvation and a reduction in overall performance.
-Loading a 65GB (11,150 files) dataset from SDSS Data Release 2 to a 16-node HDFS deployment ideally should result in 699 files on each node.
-In reality, the number of files on each node is varies between 617 and 715.
-Enforcing locality with longer {\em spark.locality.wait} time (3000 ms) leads to task distribution imbalance, which makes
-Kira SE 4.5\% slower than running with {\em spark.locality.wait} set to 0 ms.
-In practice, we set all {\em spark.locality.wait} parameters to zero, so that tasks do not wait for locality.
-This setting effectively avoids the starving situation and improves the overall time-to-solution.
-
-The root cause of the delay scheduling ineffectiveness is the small input file size of the Kira SE tasks. 
-Each input file is $\sim$6MB, while a typical Spark/Hadoop application accesses files with a block size of 64/128 MB~\cite{shvachko10}.
-Delay scheduling works effectively when it is expensive to move the data through network. The small input
-file size means that this assumption is not true, leading to reduced cost for scheduling without locality.
-We notice that the small file size is why Kira SE is CPU bound, making Kira SE
-unable to benefit from faster storage devices. 
-We are working on I/O performance to enable Kira to better utilize storage devices, as previously stated in~\S\ref{sec:Design-I/O}.
  
 \section{Programming Kira}
 \label{sec:Programming}
@@ -596,6 +559,55 @@ val objects_rdd = mtx_rdd.(m => {
 Listing~\ref{lst:SE-Iter} is similar to Listing~\ref{lst:SE}. However, we wrap the
 extraction logic in a for loop. At each stage, we make an update to the mask variable, which
 is then used for further refinement in the next loop iteration.
+
+
+\section{Tuning Spark}
+This section discusses the Spark configurations tuning in parallelism and scheduling to make
+Kira SE more efficiently use EC2 computing resources. 
+
+\subsection{Parallelism}
+
+Spark provides parallelism at both the thread and process level. By default, Spark makes use of
+thread-level parallelism by launching a single Java Virtual Machine~(JVM) per worker machine.
+Users then specify the number of threads to launch per worker (typically, one thread per core).
+However, in Kira SE, neither the jFITS nor the SEP libraries are thread safe. To work around this,
+we configured Spark to support process level parallelism by launching a worker instance for each
+core. This configuration may reduce scalability,
+as it increases the number of workers the master manages. However, our experiments with 512
+workers in \S~\ref{sec:Performance} show that Kira's scalability is not severely impacted by
+worker management overhead.
+
+\subsection{Scheduling}
+
+Spark's task-scheduling policy aims to maximize data locality by using
+delay scheduling~\cite{zaharia10ds}. In this scheduling paradigm, if node $n$ has the data needed
+to run job $j$, job $j$ will execute on node $n$ if job $j$ would wait less than a threshold time
+$t$ to start. The policy is tunable through three options:
+
+\begin{itemize}
+\item{spark.locality.wait.process}
+\item{spark.locality.wait.node}
+\item{spark.locality.wait.rack}
+\end{itemize}
+
+These parameters allow users to specify how much time a task will wait before being sent to another
+process, node, or rack. For Kira SE, we have found that data balancing can 
+impact task distribution, leading to node starvation and a reduction in overall performance.
+Loading a 65GB (11,150 files) dataset \footnote{the dataset is from SDSS Data Release 2} to a 16-node HDFS deployment ideally should result in 699 files on each node.
+In reality, the number of files on each node varies between 617 and 715.
+Enforcing locality with longer {\em spark.locality.wait} time (3000 ms) leads to task distribution imbalance, which makes
+Kira SE 4.5\% slower than running with {\em spark.locality.wait} set to 0 ms.
+In practice, we set all {\em spark.locality.wait} parameters to zero, so that tasks do not wait for locality.
+This setting effectively avoids starvaation and improves the overall time-to-solution.
+
+The root cause of the delay scheduling ineffectiveness is the small input file size of the Kira SE tasks. 
+Each input file is $\sim$6MB, while a typical Spark/Hadoop application accesses files with a block size of 64/128 MB~\cite{shvachko10}.
+Delay scheduling works effectively when it is expensive to move the data through network. The small input
+file size means that this assumption is not true, leading to reduced cost for scheduling without locality.
+We notice that the small file size is why Kira SE is CPU bound, making Kira SE
+unable to benefit from faster storage devices. 
+We are working on I/O performance to enable Kira to better utilize storage devices, as previously stated in~\S\ref{sec:Design-I/O}.
+
 
 \section{A Solution with HPC Ecosystem}
 A typical way of parallelize many-task application such as source extractor is to use scripting language
