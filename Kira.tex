@@ -554,7 +554,7 @@ This allows us to update the mask used for extraction, which is used to further 
 
 
 \section{Tuning Spark}
-This section discusses the Spark configurations tuning in parallelism and scheduling to make
+This section discusses the Spark configuration tuning in parallelism and scheduling to make
 Kira SE more efficiently use EC2 computing resources. 
 
 \subsection{Parallelism}
@@ -563,13 +563,11 @@ Spark allows for both thread and process parallelism. By default, Spark makes us
 thread-level parallelism by launching a single Java Virtual Machine~(JVM) per worker machine.
 Users then specify the number of threads to launch per worker (typically, one thread per core).
 However, in Kira SE, neither the jFITS nor the SEP libraries are thread safe. 
-\zhaonote{Frank has a comment here asking why it is like this.}
-\zhaonote{It comes from the jFITS library, it is not thread safe in design. SEP is not tested for thread parallelism also.}
 To work around this,
 we configured Spark to support process level parallelism by launching a worker instance for each
 core. This configuration may reduce scalability,
 as it increases the number of workers the driver manages. However, our experiments with 512
-workers in \S~\ref{sec:Performance} show that Kira's scalability is not severely impacted by
+workers in~\S\ref{sec:Performance} show that Kira's scalability is not severely impacted by
 worker management overhead.
 
 \subsection{Scheduling}
@@ -588,27 +586,23 @@ $t$ to start. The policy is tunable through three parameters:
 These parameters allow users to specify how much time a task will wait before being sent to another
 process, node, or rack. For Kira SE, we have found that data balancing can 
 impact task distribution, leading to node starvation and a reduction in overall performance.
-Loading a 65~GB (11,150 files) dataset \footnote{the dataset is from SDSS Data Release 2} to a 16-node HDFS deployment ideally should result in 699 files on each node.
+Loading a 65~GB (11,150 files) dataset from SDSS Data Release 2 to a 16-node HDFS deployment ideally should result in 699 files on each node.
 In reality, the number of files on each node varies between 617 and 715.
 Enforcing locality with longer {\em spark.locality.wait} time (3000 ms) leads to task distribution imbalance, which makes
 Kira SE 4.5\% slower than running with {\em spark.locality.wait} set to 0~ms.
 In practice, we set all {\em spark.locality.wait} parameters to zero, so that tasks do not wait for locality.
 This setting effectively avoids starvation and improves the overall time-to-solution.
 
-The root cause of the delay scheduling ineffectiveness is the small input file size of the Kira SE tasks. 
-Each input file is $\sim$6~MB, while a typical Spark/Hadoop application accesses files with a block size of 64/128~MB~\cite{shvachko10}.
+The root cause of the ineffectiveness of delay scheduling is the size of the input files for the Kira SE tasks. 
+Each input file is $\sim$6~MB, compared to a typical block size of 64/128~MB~\cite{shvachko10}.
 Delay scheduling's parameters let users specify how long a task should wait for locality before getting executed elsewhere.
-This waiting time can be viewed as the time-to-solution difference between executing the task with data locality and without locality.
-The large the file block is, the longer waiting time should be. Because moving a large file is more expensive than moving
-a small file. In the Kira SE case, the need for scheduling a task to a node without locality only occurs when there is a possible
-starvation if we continue to enforce the locality. Since the input files are small, we should only wait for a short period time. With
-a parameter sweep of the varying waiting time, we find that wait for 0~ms delivers the best practical performance.
-
-From the view of the span of all tasks, optimizing locality indeed improves the overall performance when there is enough
-tasks to feed all workers with data locality. However, when a starvation is possible if we keep
-enforcing the data locality, continuing to do so can degrade the overall performance due to starvation.
-
-\zhaonote{I completely rewrote the above paragraph. Now it is clear why we need to set waiting time to 0.}
+This waiting time can be viewed as the expected job completion time difference between executing the task with data locality and without locality.
+In the Kira SE case, the need for scheduling a task to a node without locality only occurs when there is a possible
+starvation if we continue to enforce the locality. Since our input files are small, the cost of doing a remote fetch is low and thus we should only
+wait for a short period time~\cite{ananthanarayanan11}. By sweeping the waiting time, we found that waiting for 0ms delivered the best performance.
+While this result seems to contradict our result in~\S\ref{sec:Performance} that states that Apache Spark outperforms
+the HPC solution due to data locality, it is not contradictory because eliminating the delay scheduling penalty still leads to
+98\% of tasks being scheduled with data locality. We have traded 2\% worse locality for a 4.5\% improvement in task balance.
 
 \section{A HPC Solution}
 A typical way to parallelize many-task application like source extractor is to use a scripting language
