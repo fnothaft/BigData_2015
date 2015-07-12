@@ -605,7 +605,7 @@ the HPC solution due to data locality, it is not contradictory because eliminati
 98\% of tasks being scheduled with data locality. We have traded 2\% worse locality for a 4.5\% improvement in task balance.
 
 \section{A HPC Solution}
-A typical way to parallelize many-task application like source extractor is to use a scripting language
+A typical way to parallelize a many-task application like source extractor is to use a scripting language
 or MPI to launch multiple tasks concurrently. Figure~\ref{fig:hpc-architecture} shows the architecture and
 of such a solution.
 
@@ -635,7 +635,7 @@ file I/O is similar to GlusterFS, file system metadata is consolidated onto a sm
 \label{sec:Performance}
 
 We evaluate Kira SE's performance against the C implementation with the SEP library
-(referred as the C version in the following text). Because it uses SEP, Kira SE performs an identical amount of
+(referred to as the C version in the following text). Because it uses SEP, Kira SE performs an identical amount of
 computation and I/O as the C version.
 
 To understand Spark's overhead, we compare the C implementation against Kira SE on a single
@@ -643,7 +643,7 @@ machine. Then we fix the problem size and scale Kira SE and the C implementation
 varying number of machines on EC2 to understand the relative scalability of each approach.
 The 1TB experiments demonstrate the difference in performance between Kira SE and the C version
 for large dataset processing. Finally, we show some interesting results when running the C
-version on the Edison supercomputer that is deployed at National Energy Research Scientific Computing Center (NERSC).
+version on the Edison supercomputer that is deployed at the National Energy Research Scientific Computing Center (NERSC).
 
 In all experiments using Amazon's EC2 service, we use the m2.4xlarge instance.
 This instance type has eight cores (each running at 2.4GHz), 68~GB RAM, two hard disk drives (HDD), and Gigabit Ethernet. 
@@ -656,11 +656,6 @@ Software configurations are described in the following experiments.
 
 The purpose of the scale-up experiments is to understand Spark's overhead by running
 Kira SE on a single node. Slowdown is caused mainly by Java Virtual Machine (JVM) overhead. 
-\zhaonote{Frank has a comment about what other possible sources of overhead could be?
-spark scheduler? inter-stage serialization/deserialization? additional overhead for loading fits files?}
-\zhaonote{I am not sure about the spark scheduler. But Kira SE has only one stage, there is no serialization/deserialization
-between stages here. And we use sc.binaryFiles() to load the data into memory, then call jFITS to convert byte arrays to FITS
-object, there isn't additional overhead.}
 We also wanted to identify the factors
 that bound Kira SE's performance. For both Kira SE and the C implementation, we store data
 locally in an ext4 file system.
@@ -681,7 +676,7 @@ performance of Kira SE and the C version for various core counts on a single mac
 
 The C version is bound by local disk performance and shows limited improvement with
 an increasing core count. While Kira SE is $7.4\times$ slower than the C implementation
-on a single core, Kira SE is within $2.2\times$ when using all eight cores on the node.
+on a single core, Kira SE is within $2.2\times$ the performance of the C version when using all eight cores on the node.
 The scaling curves indicate that the performance of the approaches begins to converge
 as core count increases. At convergence, both of the approaches will be saturating the local
 disk bandwidth.
@@ -705,7 +700,7 @@ We use a 65GB dataset from the SDSS DR2 survey that comprises 11,150 image files
 Kira SE was configured to use HDFS as a storage system, while the C version used GlusterFS. 
 Both HDFS and GlusterFS are configured with a replication factor of two.
 
-Figure~\ref{fig:scaleout} shows the performance of Kira SE and the C version across
+Figure~\ref{fig:scaleout} compares the performance of Kira SE and the C version across
 multiple compute nodes in log scale. Kira SE is 2.7x slower as the C version
 on eight cores. However, the gap between the two implementations decreases as we scale up. 
 On 256 cores and 512 cores, Kira SE is respectively 5.6\% and 22.4\% faster than the C version.
@@ -726,11 +721,6 @@ on local disk and total number of tasks. Spark and HDFS optimize for data locali
 hit ratio above 98\%, as shown in Figure~\ref{fig:locality}. In contrast, the
 C implementation's locality hit ratio decreases linearly with the log of the cluster
 size increases.
-\zhaonote{Frank has a comment about "we argued that delay scheduling is not important earlier".}
-\zhaonote{This does not conflict with that one. This is comparing 98\% locality to 0\% locality (random locality).
-The previous one was comparing 98\% locality against 100\% locality. And we showed that the additional 2\% 
-locality improvement actually slowed down the performance. So there is a curve. Anyway, this should make
-our NSDI paper more interesting.}
 
 \begin{figure}[h]
 	\begin{center}
@@ -748,7 +738,6 @@ against four configurations of GlusterFS. The four configurations are
 \emph{distributed}, \emph{replicated}, \emph{striped}, and \emph{striped replicated}. 
 Table~\ref{tb:gluster-conf} explains the data layout of each configuration.
 When possible, we set the replication and striping factors to two.
-\zhaonote{Frank asks if we set both the replication factor of two. Yes, we did that way.}
 GlusterFS manages metadata in a distributed manner by spreading metadata across
 all available nodes with a hash function. This allows the clients to deterministically
 know the location of the metadata of a given file name in the cluster.
@@ -776,7 +765,7 @@ Figure~\ref{fig:scaleout} where Kira SE begins to outperform the C version. As s
 previously, the C version performs a two-step process. The first step collects and
 partitions all filepaths. We refer to this step as metadata overhead. The processing
 step occurs next, and is where each node processes its own partition.
-Figure~\ref{fig:allgluster} shows the performance of Kira SE and the C version with
+Figure~\ref{fig:allgluster} compares the performance of Kira SE and the C version with
 profiled metadata overhead.  
 
 \begin{figure}[h]
@@ -828,9 +817,9 @@ GlusterFS configured in \emph{distributed} mode on 256 cores and 512 cores respe
 Using the more practical \emph{replicated} configuration of GlusterFS, Kira SE
 is $3.2\times$ and $3.7\times$ faster. A detailed breakdown of the performance numbers is shown in Figure~\ref{fig:1tb-ec2}.
 The C version in \emph{distributed} is slower due to the node starvation that is introduced by our parallel solution in the batch mode.
-The C version in \emph{replicated} slows down 2.8x than that in \emph{distributed} mode because the directory metadata query
-is dramatically slower (13.5x), and the additional replica for each output file and associated metadata update introduces a slowdown
-of 2.2x.
+The C version in \emph{replicated} slows down $2.8\times$ than that in \emph{distributed} mode because the directory metadata query
+is dramatically slower ($13.5\times$), and the additional replica for each output file and associated metadata update introduces a slowdown
+of $2.2\times$.
 
 This occurs for several possible reasons: One of them is that the C version is executed in parallel in a batch mode 
 where node starvation can occur at the end of a run. The other is that the metadata overhead of processing 176,938 files in a 
@@ -883,11 +872,11 @@ clearly fall into two classes. The first class has an average time-to-solution o
 with a standard variation of 69.5 seconds. The second class has an average time-to-solution 
 of 1983.2 seconds with a variation of 30.9 seconds. A further analysis shows that we are only 
 using 0.4\% of the computing resources of the Edison machine. In the first class, the sustained
-I/O bandwidth is 1.0 GB/s that is 2.1\% of the I/O bandwidth available on the file system.
+I/O bandwidth is 1.0 GB/s, which is 2.1\% of the I/O bandwidth available on the file system.
 While in the second class, the sustained I/O bandwidth is down to 0.5GB/s.
 Since the Edison cluster scheduler only schedules a single job per machine, computing resources 
 are completely isolated. Thus, we can reason that, it is the I/O network resource or the file system 
-that causes the varyed performance. In Figure~\ref{fig:1tb-edison}, we use the idle mode to refer to the 
+that causes the performance variance. In Figure~\ref{fig:1tb-edison}, we use the idle mode to refer to the 
 situation where the I/O network is idle and the busy mode to refer to the situation where the
 I/O network is saturated. In general, Kira SE performs competitively as that of the C version
 on Edison supercomputers. 
@@ -942,8 +931,8 @@ The current Kira SE implementation is CPU bound. We plan to keep improving Kira 
 on a single node until it is disk bound. This will enable Kira SE to make optimal use of
 solid state drives~(SSDs) or in-memory file system that provide high I/O throughput.
 
-Although Kira is currently available as an alpha release (\url{https://github.com/BIDS/Kira}), we are planning an official Kira 0.1 release
-that implements the source extraction application in Fall 2015.
+Kira is currently available as an alpha release (\url{https://github.com/BIDS/Kira}), and we are planning an official 0.1 release
+of the source extraction application in Fall 2015.
 We plan to migrate to PySpark, which will enable better integration with other
 Python-based astronomy tools. Additionally, we plan to provide several further enhancements to
 the source extraction API.
@@ -972,20 +961,18 @@ size. Due to its superior data locality, our Spark-based implementation delivers
 implementation running on GlusterFS. Specifically, Kira SE processes the 1TB SSDS DR7 dataset (176,938 tasks)
 $3.7\times$ faster than C over GlusterFS when running on a cluster of 64 m2.4xlarge Amazon
 EC2 instances. Kira SE also has comparable performance (between 18.5\% slower and 75.1\% faster)
-to that of the C version running on the NERSC Edison supercomputer.  
+to the C version running on the NERSC Edison supercomputer.  
 
 We also demonstrated that Big Data platforms such as Apache Spark can can integrate with existing libraries.
-\zhaonote{yes, it has been demonstrated with MLlib.}
 This allows users to reuse the source code to build new analysis pipelines.
 The flexible interface, rich dataflow support, task scheduling capacity, locality optimization, and built-in support for fault tolerance make Spark a 
-strong candidate for many-task scientific applications. 
-We believe this is important, because leveraging such platforms would enable scientists to benefit from the rapid pace of innovation and large range of systems and technologies that are being driven by wide-spread interest in Big Data analytics.
+strong candidate to support many-task scientific applications. 
+We believe this is important, because leveraging the Apache Spark platform would enable scientists to benefit from the rapid pace of innovation and large range of systems and technologies that are being driven by wide-spread interest in Big Data analytics.
 
 %ACKNOWLEDGMENTS are optional
 \section{Acknowledgments}
 
 This research is supported in part by NSF CISE Expeditions Award CCF-1139158, DOE Award SN10040 DE-SC0012463, and DARPA XData Award FA8750-12-2-0331, and gifts from Amazon Web Services, Google, IBM, SAP, The Thomas and Stacey Siebel Foundation, Adatao, Adobe, Apple, Inc., Blue Goji, Bosch, C3Energy, Cisco, Cray, Cloudera, EMC2, Ericsson, Facebook, Guavus, HP, Huawei, Informatica, Intel, Microsoft, NetApp, Pivotal, Samsung, Schlumberger, Splunk, Virdata and VMware. Author Frank Austin Nothaft is supported by a National Science Foundation Graduate Research Fellowship.
-\zhaonote{Mike asked who FAN is, so I use your full name. We have enough space.}
 
 This research is also supported in part by the Gordon and Betty Moore
 Foundation and the Alfred P. Sloan Foundation together through the
