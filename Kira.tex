@@ -388,12 +388,16 @@ we focused on improving computation and  I/O cost as well as on providing an fle
 
 \subsection{Architecture Overview}
 \label{sec:Design-Overview}
-\zhaonote{Frank has a comment to rename Kira driver and worker to Spark driver and worker.}
-\zhaonote{That was what we did in the previous version. We had a comment from the reviewer 
-saying that we did not show Kira components, instead we were only showing Spark architecture.
-So I think, since Kira is a domain-specific system, we can say there is a Kira driver that runs
-on top of Spark driver, though it doesn't do anything fancy. But in this way, it is easier to present
-the Kira architecture.}
+%\zhaonote{Frank has a comment to rename Kira driver and worker to Spark driver and worker.}
+%\zhaonote{That was what we did in the previous version. We had a comment from the reviewer 
+%saying that we did not show Kira components, instead we were only showing Spark architecture.
+%So I think, since Kira is a domain-specific system, we can say there is a Kira driver that runs
+%on top of Spark driver, though it doesn't do anything fancy. But in this way, it is easier to present
+%the Kira architecture.}
+
+% Sorry, forgot about that reviewer comment. I think the reviewer is wrong, but alas, reviewers
+% are like customers. Specifically, the reviewer is always right... -FAN
+
 Kira's overall architecture is shown in Figure~\ref{fig:architecture}.
 Kira runs on top of Spark, which supports a single driver and multiple workers.
 The SEP library is deployed to all workers nodes. The input files are
@@ -409,10 +413,10 @@ stored in the underlying file system.
 \end{figure}
 
 
-To run Kira, we dispatch the compiled program, the parameters, and library dependencies to the Kira master.
-The Kira Master is then responsible for managing control flow, dataflow, and task scheduling 
+To run Kira, we dispatch the compiled program, the parameters, and library dependencies to the Kira driver.
+The Kira Driver is then responsible for managing control flow, dataflow, and task scheduling 
 by coordinating the Kira workers. 
-The Kira Master accesses distributed/parallel file systems for metadata.
+The Kira Driver accesses distributed/parallel file systems for metadata.
 The actual I/O is distributed across the Kira worker nodes in
 parallel. To run a task, workers use the Java Native Interface (JNI) to call the SEP library.
 
@@ -427,18 +431,16 @@ We considered three approaches when implementing the Source Extractor algorithm 
 \textbf{library} that we call.
 \end{enumerate}
 
-While \emph{reimplementing} the functionality of the C SExtractor code using Spark?s Scala API 
+While \emph{reimplementing} the functionality of the C SExtractor code using Spark's Scala API 
 would allow us to execute SExtractor in parallel, it would lower the efficiency of the computational 
 and would require a significant reimplementation effort.
 The \emph{monolithic} approach would not involve a modification to the original executable. While we could 
 integrate with the original codebase at this level, this would lock us in to the hardcoded program logic 
 of the original program. In our example, this would prevent us from running an iterative source extraction 
-pipeline.  We demonstrated an example of this in~\S\ref{sec:Background-SE}.
-
-In order to not be locked in to the rigid control flow limitations of the \emph{monolithic} model, 
+pipeline.  We demonstrated an example of this in~\S\ref{sec:Background-SE}. In order to not be locked in to the rigid control flow limitations of the \emph{monolithic} model, 
 we instead propose a \emph{library}-based model.
 This approach allows us to reuse the legacy code base without sacrificing control-flow flexibility.  
-\zhaonote{I think it is clear here why we choose the library approach. Maybe it is ok to not mention the usage example}
+
 %With the library interface, Kira users can build an iterative source
 %extractor by repeatedly calling into a group of Kira APIs. Listing~\ref{lst:SE-Iter} shows the source code of the
 %iterative source extractor.
@@ -452,8 +454,8 @@ images. Each FITS file contains ASCII metadata and binary image data.
 The FITS format is commonly used by sky surveys, thus Kira must be able to process and export FITS files.
 In Kira, one of our goals is to leverage the locality information provided by HDFS. When a file is loaded into 
 HDFS, the file is split into blocks that are replicated across machines. When a system like Spark loads the file, 
-HDFS then provides information about which machines have each block of the file. This allows for the task 
-scheduler to optimize for data locality.
+HDFS then provides information about which machines have each block of the file. This allows for the
+scheduler to optimize task placement for data locality.
 
 %The mixed text and binary contents of FITS format makes compatibility with Kira difficult.
 %One way for Kira to be compatible with the FITS format while preserving file locality is to customize Spark's
@@ -469,7 +471,7 @@ into the FITS objects that users can transform and compute upon.
 \section{Programming Kira}
 \label{sec:Programming}
 Kira API is described
-in Table~\ref{tb:Primitives}. ``Background'' methods are used to estimate and remove the image background. The Extractor
+in Table~\ref{tb:Primitives}. Background methods are used to estimate and remove the image background. The Extractor
 API is used for extracting objects and estimating astrometric and photometric parameters. The Ellipse API offers helper
 functions for converting between ellipse representations, and for generating masks that are based on an object's elliptical
 shape. The \texttt{sum\_circle()}, \texttt{sum\_ellipse()}, and \texttt{kron\_radius()} methods in the extractor category and all
@@ -566,7 +568,7 @@ However, in Kira SE, neither the jFITS nor the SEP libraries are thread safe.
 To work around this,
 we configured Spark to support process level parallelism by launching a worker instance for each
 core. This configuration may reduce scalability,
-as it increases the number of workers the master manages. However, our experiments with 512
+as it increases the number of workers the driver manages. However, our experiments with 512
 workers in \S~\ref{sec:Performance} show that Kira's scalability is not severely impacted by
 worker management overhead.
 
