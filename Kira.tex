@@ -70,6 +70,7 @@
 \fi
 
 \newcommand{\up}{\vspace*{-1em}}
+\hyphenation{HTCondor}
 
 \begin{document}
 %
@@ -170,18 +171,19 @@ $^\ddagger$ ASPIRE Lab, University of California, Berkeley \\
 \maketitle
 
 \begin{abstract}
-Many scientific applications are constructed by composing multiple single-process programs into a dataflow (referred as many-task applications).
-Practitioners often use a traditional HPC platform and its software stack to parallelize these analyses.
-In this work, we investigate an alternate approach, leveraging the modern big data platform, for this type of application.
-We build Kira, a flexible and distributed astronomy image processing toolkit using Apache Spark. 
-We also implement a Source Extractor application ~(Kira SE) with the Kira API.
-With Kira SE as the use case, we study the programming flexibility, dataflow richness, scheduling capacity and performance
+Scientific analyses commonly compose multiple single-process programs into a dataflow.
+An end-to-end dataflow of single-process programs is known as a many-task application.
+Typically, tools from the HPC software stack are used to parallelize these analyses.
+In this work, we investigate an alternate approach that uses Apache Spark---a modern big data platform---to parallelize many-task applications.
+We demonstrate Kira, a flexible and distributed astronomy image processing toolkit using Apache Spark. 
+We use this API to implement the Kira SE Source Extractor application.
+We use the Kira SE use case to study the programming flexibility, dataflow richness, scheduling capacity and performance
 of Apache Spark running on the EC2 cloud.
-In terms of performance, by exploiting data locality, Kira SE achieves a 3.7$\times$ speedup over an equivalent C program when analyzing a 1TB
-dataset with 512 cores on the Amazon EC2 cloud. 
-Leveraging software originally designed for big data infrastructure, Kira SE achieves competitive performance as that of  the C implementation
+By exploiting data locality, Kira SE achieves a 3.7$\times$ speedup over an equivalent C program when analyzing a 1TB
+dataset using 512 cores on the Amazon EC2 cloud. 
+By leveraging software originally designed for big data infrastructure, Kira SE achieves competitive performance to the C implementation
 running on the NERSC Edison supercomputer.
-Our experience with Kira indicates that emerging Big Data platforms such as Apache Spark are an efficient alternative for many-task scientific applications.  
+Our experience with Kira indicates that emerging Big Data platforms such as Apache Spark are a performant alternative for many-task scientific applications.  
 \end{abstract}
 
 % A category with the (minimum) three required fields
@@ -193,40 +195,35 @@ Our experience with Kira indicates that emerging Big Data platforms such as Apac
 
 \section{Introduction}
 Many scientific discoveries require the collection and analysis of large datasets.
-Dramatic increases in dataset sizes have made data processing a major bottleneck for scientific research in many disciplines, such as astronomy, genomics, the social sciences, and neuroscience.
-Research groups frequently start with a C or Fortran program that is optimized for processing a small amount of data on a single-node workstation and then use distributed processing frameworks to improve processing capacity. Examples include: the Montage astronomy image mosaic application~\cite{jacob09},  the sequence alignment tool BLAST~\cite{altschul90}, and high energy physics histogram analysis~\cite{ekanayake08}.
-These applications are known as many-task applications~\cite{raicu08} because they comprise many small single-process tasks that are connected by dataflow patterns.
+Dramatic dataset size increases have made data processing a major bottleneck for scientific research in many disciplines, such as astronomy, genomics, the social sciences, and neuroscience.
+Researchers frequently start with a C or Fortran program that is optimized for processing a small amount of data on a single-node workstation and then use distributed processing frameworks to improve processing capacity. Examples include: the Montage astronomy image mosaic application~\cite{jacob09},  the sequence alignment tool BLAST~\cite{altschul90}, and high energy physics histogram analysis~\cite{ekanayake08}.
+These applications are known as many-task applications because they comprise many small single-process tasks that are connected by dataflow patterns~\cite{raicu08}.
 
-Scientists have used dedicated workflow systems (e.g. HTCondor~\cite{litzkow88}), parallel frameworks (e.g. Message Passing Interface~\cite{gropp96}), and more recently the data processing system Hadoop~\cite{HADOOP}  to build these applications. Each approach has its own advantages such as provenance tracking, high scalability, and automated parallelism. However, these approaches also have shortcomings such as limited programming flexibility, lack of fault-tolerance, or a rigid programming model.
+Scientists have used dedicated workflow systems (e.g., HTCondor~\cite{litzkow88}), parallel frameworks (e.g., the Message Passing Interface, MPI~\cite{gropp96}), and more recently the data processing system Hadoop~\cite{HADOOP}  to build these applications. Each approach has its own advantages such as provenance tracking, high scalability, and automated parallelism. However, these approaches also have shortcomings such as limited programming flexibility, lack of fault-tolerance, or a rigid programming model.
 
 
-Apache Spark~\cite{zaharia12} emerged as a dataflow-based distributed computing system
-to answer demands for a tool that could run fast iterative data analyses on very large datasets.
-Spark uses a direct acyclic graph (DAG) model to coordinate parallel tasks, 
+Apache Spark~\cite{zaharia12} was designed to support fast iterative data analyses on very large datasets.
+Spark uses a directed acyclic graph (DAG) to describe parallel tasks, 
 provides resilience against transient failures by tracking computational lineage
 and optimizes for data locality when scheduling work.
 These features make Apache Spark a compelling candidate distributed platform for many-task applications.
 
-In this work, we investigate the idea of leveraging Apache Spark , as an example of the modern big data platform for many-task applications.
-In particular, we present Kira, an astronomy image processing toolkit.
+In this work, we investigate how to leverage Apache Spark for many-task applications.
+We study this in the context of Kira, an astronomy image processing toolkit.
 We use a real world application, Source Extractor (Kira SE), to examine the programming flexibility, dataflow richness,
-and scheduling capacity of Spark. 
-We evaluate Kira SE's performance by comparing against
-an equivalent C implementation that is parallelized by HPC tools.
-
-\zhaonote{I add a numbering bullet to show the advantages}
-Leveraging a big data platform such as Apache Spark for many-task applications have many advantages:
+and scheduling capacity of Spark. We evaluate Kira SE's performance by comparing against
+an equivalent C implementation that is parallelized by HPC tools. Leveraging a platform like Apache Spark provides many advantages for many-task applications:
 \begin{enumerate}
-\item Spark can integrate existing astronomy software then expose an programming interface at a library level.
-This allows astronomers to reuse the existing libraries to build new analysis functionalities.
+\item Spark can integrate with existing astronomy libraries.
+This allows astronomers to reuse existing libraries to build new analysis functionalities.
 \item Spark supports a broad range of dataflow patterns such as pipeline, broadcast, scatter, gather, reduce, allgather, 
 and alltoall (shuffle). The broad dataflow pattern support can be used to optimize the data transfer between computation stages.
-\item Spark's underlying file system support allows Kira to process data stored on the big data storage system, e.g. HDFS\cite{shvachko10}, 
-as well as HPC shared file system, e.g. GlusterFS~\cite{davies13} and Lustre~\cite{donovan03}.
-\item The Kira toolkit also inherits Spark's fault tolerance mechanism, which is a missing feature in the HPC MPI programming model~\cite{gropp96}.
-\item Our experiments show that Spark is capable of managing $O(10^6)$ tasks and that Kira SE runs 3.7x faster than the equivalent C program on shared file system running in the Amazon EC2 cloud on the 1TB Data Release 7 from the Sloan Digital Sky Survey~\cite{york00}. 
-\item We also show that running Kira SE in the Amazon EC2 cloud can achieve competitive performance than that of running the equivalent C program on the NERSC Edison supercomputer. 
+\item Spark's underlying file system support allows Kira to process data stored in a distributed file system like HDFS~\cite{shvachko10}, 
+as well as data stored in HPC-style shared file systems like GlusterFS~\cite{davies13} or Lustre~\cite{donovan03}.
+\item The Kira toolkit also inherits Spark's fault tolerance mechanism, which is a feature missing from MPI~\cite{gropp96}.
 \end{enumerate}
+
+Our experiments show that Spark is capable of managing $O(10^6)$ tasks and that Kira SE runs 3.7x faster than the equivalent C program on shared file system running in the Amazon EC2 cloud on the 1TB Data Release 7 from the Sloan Digital Sky Survey~\cite{york00}. We also show that running Kira SE in the Amazon EC2 cloud can achieve performance that is competitive with running the equivalent C program on the NERSC Edison supercomputer.
 
 Our experience with Kira indicates that Big Data platforms such as Apache Spark are an competitive alternative for many-task scientific applications.   
 We believe this is important, because leveraging such platforms would enable scientists to benefit from the rapid pace of innovation and large range of systems and technologies that are being driven by wide-spread interest in Big Data analytics.
@@ -244,7 +241,7 @@ This section reviews the science behind sky surveys, introduces the source extra
 \subsection{Sky Surveys}
 
 Modern astronomical research is increasingly based around large-scale sky surveys.
-Rather than selecting specific targets of study, such a survey will uniformly observe large
+Rather than selecting specific targets to study, such a survey will uniformly observe large
 swaths of the sky. Example surveys include the Sloan Digital Sky Survey (SDSS)~\cite{york00},
 the Dark Energy Survey (DES)~\cite{dark05}, and the Large Synoptic Survey Telescope~(LSST,
 \cite{ivezic08}). Enabled by new telescopes and cameras with wide fields of view, these
@@ -640,7 +637,7 @@ of such a solution.
   	\end{center}
 \end{figure}
 
-All the input files are stored in the shared file system, e.g. GlusterFS or Luster. We use a master script
+All the input files are stored in the shared file system, e.g., GlusterFS or Luster. We use a master script
 first to read all the input file names, then partition the file names into partitions. After that, the master
 script informs the worker scripts on each node to process and independent partition of files in parallel 
 in a batch manner.
@@ -948,7 +945,7 @@ MPI does not provide fault tolerance, which is problematic when running a long l
 application across many (possibly) unreliable nodes.
 
 Traditionally, distributed workflow systems are run on top of a shared file system. 
-Shared file systems (e.g. Lustre~\cite{donovan03}, and
+Shared file systems (e.g., Lustre~\cite{donovan03}, and
 GlusterFS~\cite{davies13}) are commonly used because they are compatible with the POSIX
 standard and offer a shared namespace across all nodes. However, shared file systems
 do not expose file locality to workflow systems, thus making suboptimal use of local
