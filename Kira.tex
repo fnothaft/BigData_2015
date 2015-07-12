@@ -307,8 +307,10 @@ execution and data movement with better knowledge of the operations to be perfor
 systems that immediately execute each stage. Spark provides Scala, Java, and Python programming interfaces.
 By default, Spark uses HDFS~\cite{shvachko10} for persistent storage, but
 it can process data stored in Amazon S3 or a shared file system such as
-GlusterFS~\cite{davies13} or Lustre~\cite{donovan03}. Spark tracks job lineage, which is used for the
-recomputation of data when a node fails. 
+GlusterFS~\cite{davies13} or Lustre~\cite{donovan03}. Spark provides fault tolerance via
+lineage-based recomputation. If a partition of data is lost, Spark can recover the data
+by re-executing the section of the DAG that computed the lost partition.
+
 %Spark has been extended to support a variety of
 %application specific workloads through the GraphX~\cite{gonzalez14} library for graph
 %processing, the MLlib~\cite{sparks13} library for machine learning, and SparkSQL~\cite{armbrust15} for relational processing.
@@ -317,18 +319,10 @@ recomputation of data when a node fails.
 \label{sec:Capability}
 
 Scientific analysis pipelines are frequently assembled by building a dataflow out of many
-single-process programs. Many-task applications arise
-\zhaonote{Two things. First, let's call it many-task applications consistently in the paper, it is a defined-term. Plus, 
-The ``pipeline'' is a data flow pattern in this paper, it will confuse the readers with the same word referring to two things.
-Second, ``arise'' is better, since it is a application paradigm that is more popularly seen in scientific research.
-``are used'' is not accurate since the scientists do not use a specific application paradigm on purpose, it is more
-from the nature of the application.}
- in scientific research
+single-process programs. Many-task applications arise in scientific research
 domains including astronomy, biochemistry, bioinformatics, psychology, economics, climate science,
 and neuroscience. The tasks in these applications are typically grouped into stages and the stages are connected by
 producer-consumer data sharing relationships. 
-\zhaonote{Frank has a comment here about the inaccuracy of ``short-lived'' and the repeated definition of ``pipeline''. I have rephrased it a bit saying the tasks forms stages, and stages are connected
-by producer-consumer relationships. This is more accurate.}
 A previous survey study~\cite{katz11} identified
 seven common dataflow patterns among a group of many-task applications. The patterns
 include pipeline, broadcast, scatter, gather,
@@ -336,23 +330,21 @@ reduce, allgather, and alltoall. Most many-task applications
 can be viewed as stages of independent tasks that are linked by these dataflow patterns.
 
 The map-reduce~\cite{dean04} model uses a similar pattern to schedule jobs. Traditional map-reduce
-systems as such as Google's MapReduce~\cite{dean04} and Apache Hadoop MapReduce~\cite{HADOOP} 
-\zhaonote{Frank has a comment here to call it Apache Hadoop MR, I searched online, Apache Hadoop MapReduce
-seems to be the official name?}
+systems such as Google's MapReduce~\cite{dean04} and Apache Hadoop MapReduce~\cite{HADOOP} 
 abstract producer-consumer relationships into a map stage and a reduce stage. These two stages are then
 linked by a data shuffle. Although these systems have proved very powerful for processing very
 large datasets, the map-reduce API has been criticized as inflexible~\cite{dewitt08}.
 Additionally, since jobs are restricted to a single map and reduce phase, tools such as
 FlumeJava~\cite{chambers10} are necessary for assembling pipelines of map-reduce jobs. Since
-data is spilled to disk at the end of each map and reduce phase, map-reduce performs poorly
+data is spilled to disk at the end of each map and reduce phase, traditional map-reduce platforms perform poorly
 on iterative and pipelined workflows~\cite{zaharia12}.
 
 To resolve these problems, second-generation map-reduce execution systems such as
 DryadLINQ~\cite{yu08} and Spark~\cite{zaharia12} allow for applications to be decomposed into
 DAGs. In these DAGs, nodes represent computation, and the nodes are
-linked by dataflows. In Spark, this abstraction is provided by Resilient Distributed Datasets~(RDDs)~\cite{zaharia12}.
+linked by dataflows. In Spark, this abstraction is provided by RDDs~\cite{zaharia12}.
 
-In Table~\ref{tb:Patterns}, we demonstrates how seven common dataflow patterns can be mapped
+In Table~\ref{tb:Patterns}, we demonstrate how seven common dataflow patterns can be mapped
 to Apache Spark.
 
 \begin{table}[h]
@@ -385,10 +377,6 @@ As compared to other DAG based methods such as DryadLINQ, this enables
 the efficient execution of chained pipeline stages. In a chained pipeline,
 I/O and communication are only performed before the first stage of the chain, and after the
 last stage of the chain. Spark uses communication barriers to synchronize the execution of each stage~\cite{zaharia12}.
-
-Spark provides fault tolerance via
-lineage-based recomputation. If a partition of data is lost, Spark can recover the data
-by re-executing the section of the DAG that computed the lost partition~\cite{zaharia12}. 
 
 \section{Kira Design and Implementation}
 \label{sec:Design}
