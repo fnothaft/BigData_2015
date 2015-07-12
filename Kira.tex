@@ -268,7 +268,7 @@ background estimation, background removal, object detection, and astrometric
 and photometric estimation.
 
 Astronomers can improve extraction accuracy by running multiple iterations of source
-extraction.Detected objects are removed after each iteration. While
+extraction. Detected objects are removed after each iteration. While
 the original C program contains the required functionalities for building this iterative process,
 it does not expose the interfaces through the command line. To resolve this issue,
 SEP~\cite{barbary2015} reorganizes the code base of SExtractor to expose core
@@ -279,7 +279,7 @@ the SEP library.
 \subsection{Engineering Requirements}
 \label{sec:Background-EngReq}
 
-In some experiments -- such as the ones that look for supernovae explosions -- it is important to process
+In some experiments---such as experiments that look for supernovae explosions---it is important to process
 the images as rapidly as possible. A rapid processing pipeline can enable astronomers to trigger follow-up
 observations with more sensitive instrumentation before the peak of the supernovae occurs.
 High throughput is also needed in large scale
@@ -287,29 +287,26 @@ sky survey pipelines that perform real time data analysis, e.g., LSST~\cite{ivez
 The LSST uses a 2.4m-wide optical telescope that captures 3.2 billion pixels per
 image. This telescope produces approximately 12.8~GB in 39~seconds
 for a sustained rate of $\sim$330~MB per second. A typical night produces 13~TB of data. 
-Over the planned 10-year operation, the survey will produce 60~PB of raw data, which will be consolidated into a 15~PB catalog.
-This timely processing requirement and the massive amount of data provides challenging throughput requirement for the 
+Over the planned 10-year project, the survey is expected produce 60~PB of raw data, which will be consolidated into a 15~PB catalog.
+This timely processing requirement and the massive amount of data provides a challenging throughput requirement for the 
 processing pipeline. 
 
 \subsection{Spark}
-\zhaonote{Frank suggests remove this section since the Big Data community should know Spark}
-\zhaonote{I think it is ok to keep this section. I see many PC members in the conference do not have Spark background}
 Apache Spark is a dataflow-based execution system that provides a functional, collection
 oriented API~\cite{zaharia12}. Spark's development was motivated by a need for a
-system that could rapidly execute iterative workloads on very large datasets. Spark has
+system that could rapidly execute iterative workloads on very large datasets, as is common
+in large scale machine learning~\cite{zaharia10}. Spark has
 become widely adopted in industry, and academic research groups have used Spark
 for the analysis of scientific datasets in areas such as neuroscience~\cite{freeman14} and genomics~\cite{nothaft15}.
 
 Spark is centered around the Resilient Distributed Dataset~(RDD) abstraction~\cite{zaharia12}.
 To a programmer, RDDs appear as an immutable collection of independent items that are 
-distributed across the cluster. RDDs are logically immutable and are transformed using a
+distributed across the cluster. RDDs are immutable and are transformed using a
 functional API. Operations on RDDs are evaluated lazily, enabling the system to schedule 
 execution and data movement with better knowledge of the operations to be performed than 
-systems that immediately execute each stage.
-
-Spark provides Scala, Java, and Python programming interfaces in a functional
-programming paradigm. Spark uses HDFS~\cite{shvachko10} for persistent storage, but
-it can process data stored in S3 or a shared file system such as
+systems that immediately execute each stage. Spark provides Scala, Java, and Python programming interfaces.
+By default, Spark uses HDFS~\cite{shvachko10} for persistent storage, but
+it can process data stored in Amazon S3 or a shared file system such as
 GlusterFS~\cite{davies13} or Lustre~\cite{donovan03}. Spark tracks job lineage, which is used for the
 recomputation of data when a node fails. 
 %Spark has been extended to support a variety of
